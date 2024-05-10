@@ -1,7 +1,7 @@
 #!/bin/bash
 
-DEFAULT_REPO='AlgebraicTemplate'
-DEFAULT_UUID='b66562e1-fa90-4e8b-9505-c909188fab76' 
+DEFAULT_REPO='AlgebraicABMS'
+DEFAULT_UUID='1301f41b-2c8a-4430-9d85-ab97d23a62cd' 
 
 usage="This script is for initializing the template with the new repository name and UUID. Please provide the new repository name and UUID in that order. The repository name cannot be 'Test.'\n
 Example:\n

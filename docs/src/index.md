@@ -1,7 +1,7 @@
-# AlgebraicTemplate.jl
+# AlgebraicABMS.jl
 
 ```@meta
-CurrentModule = AlgebraicTemplate
+CurrentModule = AlgebraicABMS
 ```
 
-`AlgebraicTemplate.jl` is a Julia library for...
+`AlgebraicABMS.jl` is a Julia library for...

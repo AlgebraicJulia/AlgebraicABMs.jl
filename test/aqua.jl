@@ -1,3 +1,3 @@
-using Aqua, AlgebraicTemplate 
+using Aqua, AlgebraicABMS 
 
-Aqua.test_all(AlgebraicTemplate, ambiguities=false,)
+Aqua.test_all(AlgebraicABMS, ambiguities=false,)

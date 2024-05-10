@@ -1,4 +1,4 @@
 [deps]
-AlgebraicABMS = "1301f41b-2c8a-4430-9d85-ab97d23a62cd"
+AlgebraicABMs = "5A5E3447-9604-46E6-8D91-CB86F5F51721"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"

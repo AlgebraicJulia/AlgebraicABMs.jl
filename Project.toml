@@ -1,11 +1,21 @@
-name = "AlgebraicABMS"
-uuid = "1301f41b-2c8a-4430-9d85-ab97d23a62cd"
+name = "AlgebraicABMs"
+uuid = "5a5e3447-9604-46e6-8d91-cb86f5f51721"
 license = "MIT"
 authors = ["AlgebraicJulia Developer <email@algebraicjulia.org>"]
 version = "0.0.1"
 
 [deps]
+AlgebraicPetri = "4f99eebe-17bf-4e98-b6a1-2c4f205a959b"
+AlgebraicRewriting = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Catlab = "134e5e36-593f-5add-ad60-77f754baafbe"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Fleck = "5bb9b785-358c-4fee-af0f-b94a146244a8"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [compat]
 Catlab = "^0.16"

@@ -1,4 +1,4 @@
 [deps]
-AlgebraicABMS = "1301f41b-2c8a-4430-9d85-ab97d23a62cd"
+AlgebraicABMs = "5A5E3447-9604-46E6-8D91-CB86F5F51721"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

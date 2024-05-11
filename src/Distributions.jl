@@ -2,8 +2,9 @@ module Distributions
 using Distributions, SpecialFunctions
 export weibullpar
 """
-    Get the shape and scale parameters for a Weibull distribution with a given mean and variance.
-This code is a translation of the R "mixdist" package's function at https://github.com/cran/mixdist/blob/master/R/weibullpar.R
+Get the shape and scale parameters for a Weibull distribution with a given mean and variance.
+This code is a translation of the R "mixdist" package's 
+[function](https://github.com/cran/mixdist/blob/master/R/weibullpar.R)
 """
 function weibullpar(mu, sigma)
     cv = sigma / mu

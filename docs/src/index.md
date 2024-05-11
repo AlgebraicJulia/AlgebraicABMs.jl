@@ -4,4 +4,4 @@
 CurrentModule = AlgebraicABMs
 ```
 
-`AlgebraicABMs.jl` is a Julia library for...
+`AlgebraicABMs.jl` is a Julia library for creating agent-based models.

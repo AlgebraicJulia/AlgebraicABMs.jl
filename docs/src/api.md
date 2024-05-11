@@ -1,5 +1,9 @@
 # Library Reference
 
 ```@autodocs
-Modules = [AlgebraicABMs]
+Modules = [
+  AlgebraicABMs.Distributions,
+  AlgebraicABMs.PetriInterface,
+  AlgebraicABMs.RewriteSemiMarkov
+]
 ```

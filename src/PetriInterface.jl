@@ -2,6 +2,7 @@
 Petri nets as a presentation of certain kinds of rewrite rules.
 """
 module PetriInterface
+export PetriNetCSet
 
 using AlgebraicRewriting, Catlab, AlgebraicPetri
 using Fleck
@@ -102,6 +103,9 @@ function to_clocksys(spn::AbstractPetriNet, init::ACSet, clockdists)
   return clock
 end 
 
+"""
+Convert a Petri net into a system of rewrite rules
+"""
 function run!(mlpn::T, clockdists, init::ACSet; kw...) where {T<:AbstractPetriNet}
   run!(to_clocksys(mlpn, init, clockdists), init; kw...)
 end

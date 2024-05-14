@@ -24,19 +24,3 @@ To locally run the test suite, run the following command
 ```
 julia --project=test test/runtests.jl
 ```
-
-### To-do: Buildkite
-
-AlgebraicJulia uses [Buildkite](https://buildkite.com/) to submit resource-intensive processes such as building documentation and executing tests to the [HiPerGator](https://www.rc.ufl.edu/about/hipergator/) computing cluster.
-
-While this template comes with a preconfigured `.buildkite/pipeline.yml` file, this repository is not integrated with Buildkite by default. If you would like your repository to use Buildkite to run processes on HiPerGator, tag an issue with @AlgebraicJulia/SysAdmins. 
-
-### 📔 To-do: Set Up GitHub Pages (Public Repos Only)
-
-1. Follow the Usage steps above to set up a new template, make sure all initial GitHub Actions have passed
-2. Navigate to the repository settings and go to "Code and automation", "Pages"
-3. Make sure the "Source" dropdown is set to "Deploy from a branch"
-4. Set the "Branch" dropdown to "gh-pages", make sure the folder is set to "/ (root)", and click "Save"
-5. Go back to the main page of your repository and click the gear to the right of the "About" section in the right side column
-6. Under "Website" check the checkbox that says "Use your GitHub Pages website" and click "Save changes"
-7. You will now see a URL in the "About" section that will link to your package's documentation

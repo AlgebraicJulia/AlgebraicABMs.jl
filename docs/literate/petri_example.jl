@@ -22,7 +22,7 @@ to_graphviz(sir_pn)
 
 # A "state of the world" in this model is just a finite set of Susceptible, Infected, and Recovered people. Thus we can specify a model with 3 integers.
 
-init = PetriNetCSet(sir_pn, S=100, I=5) # Initial state
+init = PetriNetCSet(sir_pn, S=100, I=5); # Initial state
 
 
 # We declare parameters to specify the random waiting times
@@ -46,15 +46,15 @@ clockdists[:wane] = (t) -> Exponential(wane)
 
 ## the Weibull clock (non-Markov)
 α, θ = weibullpar(30, 5)
-clockdists[:rec] = (t) -> Weibull(α, θ)
+clockdists[:rec] = (t) -> Weibull(α, θ);
 
 # We make a reporting function that extracts information from each time step.
 count(acs::ACSet) = 
-  NamedTuple(Dict([o => nparts(acs, o) for o in ob(acset_schema(acs))]))
+  NamedTuple(Dict([o => nparts(acs, o) for o in ob(acset_schema(acs))]));
 
 
 # We simulate a model
-sirout = run!(sir_pn, clockdists, init; save=count, maxevent=20)
+sirout = run!(sir_pn, clockdists, init; save=count, maxevent=2000)
 X = first.(sirout)
 SIR = [getindex.(last.(sirout), x) for x in 1:3]
 f = Figure();

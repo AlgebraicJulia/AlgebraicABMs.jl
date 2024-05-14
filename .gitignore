@@ -27,3 +27,7 @@ Manifest.toml
 .DS_Store
 .vscode
 .ipynb_checkpoints
+
+cache/
+
+figures/SIRSDiscretetrajectory.png

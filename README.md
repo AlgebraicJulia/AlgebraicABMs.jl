@@ -5,14 +5,13 @@
 [![Code Coverage](https://codecov.io/gh/AlgebraicJulia/AlgebraicABMs.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/AlgebraicJulia/AlgebraicABMs.jl)
 [![CI/CD](https://github.com/AlgebraicJulia/AlgebraicABMs.jl/actions/workflows/julia_ci.yml/badge.svg)](https://github.com/AlgebraicJulia/AlgebraicABMs.jl/actions/workflows/julia_ci.yml)
 
-A template repository for making a new AlgebraicJulia package.
+Important example files: `docs/literate/petri_example.jl` and `test/ABMs.jl`
 
 ## Caveats
 
-- [Fleck.jl](https://github.com/adolgert/Fleck.jl) is not officially released, so you must clone that repo and `dev` it.
-- A necessary feature is in a PR branch of [AlgebraicRewriting.jl](https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/pull/58): until this gets merged and a new version is released, it's necessary to use that particular branch.
+[Fleck.jl](https://github.com/adolgert/Fleck.jl) is not officially released, so you must clone that repo and `dev` it.
 
-These will need to be addressed before the tests can be run and documentation can be built automatically by Github actions.
+This will need to be addressed before the tests can be run / documentation can be built automatically by Github actions.
 
 ## 🛠️ Usage
 

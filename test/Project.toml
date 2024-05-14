@@ -1,4 +1,12 @@
 [deps]
-AlgebraicABMS = "1301f41b-2c8a-4430-9d85-ab97d23a62cd"
+AlgebraicABMs = "5a5e3447-9604-46e6-8d91-cb86f5f51721"
+AlgebraicPetri = "4f99eebe-17bf-4e98-b6a1-2c4f205a959b"
+AlgebraicRewriting = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Catlab = "134e5e36-593f-5add-ad60-77f754baafbe"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Fleck = "5bb9b785-358c-4fee-af0f-b94a146244a8"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

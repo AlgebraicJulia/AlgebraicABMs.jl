@@ -1,42 +1,37 @@
-# AlgebraicABMS.jl
+# AlgebraicABMs.jl
 
-[![Stable Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicABMS.jl/stable)
-[![Development Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicABMS.jl/dev)
-[![Code Coverage](https://codecov.io/gh/AlgebraicJulia/AlgebraicABMS.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/AlgebraicJulia/AlgebraicABMS.jl)
-[![CI/CD](https://github.com/AlgebraicJulia/AlgebraicABMS.jl/actions/workflows/julia_ci.yml/badge.svg)](https://github.com/AlgebraicJulia/AlgebraicABMS.jl/actions/workflows/julia_ci.yml)
+[![Stable Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicABMs.jl/stable)
+[![Development Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicABMs.jl/dev)
+[![Code Coverage](https://codecov.io/gh/AlgebraicJulia/AlgebraicABMs.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/AlgebraicJulia/AlgebraicABMs.jl)
+[![CI/CD](https://github.com/AlgebraicJulia/AlgebraicABMs.jl/actions/workflows/julia_ci.yml/badge.svg)](https://github.com/AlgebraicJulia/AlgebraicABMs.jl/actions/workflows/julia_ci.yml)
 
-A template repository for making a new AlgebraicJulia package.
+Important example files: `docs/literate/petri_example.jl` and `test/ABMs.jl`
+
+## Caveats
+
+[Fleck.jl](https://github.com/adolgert/Fleck.jl) is not officially released, so you must clone that repo and `dev` it.
+
+This will need to be addressed before the tests can be run / documentation can be built automatically by Github actions.
 
 ## 🛠️ Usage
 
-1. Use the "Use this template" dropdown to select "Create a new repository"
-2. In the new page select "AlgebraicJulia" as the owner, give the repository a name, and create a new repository from the template
-3. Set up Codecov credentials for code coverage (If you have trouble, reach out to an AlgebraicJulia organization owner to help with this)
+To locally build the documentation and the literate code examples, run the following in the command line:
+```
+julia --project=docs -e "using AlgebraicABMs, LiveServer; servedocs(literate_dir=\"docs/literate\",skip_dir=\"docs/src/generated\")"
+```
 
-   1. Log into [Codecov](https://codecov.io) with your GitHub account (this requires that you are a member of the AlgebraicJulia organization)
-   2. Navigate to the [AlgebraicJulia organization](https://app.codecov.io/gh/AlgebraicJulia)
-   3. Select your new repository from the list (e.x. "AlgebraicX")
-   4. Note down the `CODECOV_TOKEN` value (It may be in the "Settings" tab if it doesn't show up immediately)
-   5. Navigate back to your new GitHub repository and go to the Settings tab
-   6. Go to "Security", "Secrets and variables", and "Actions" and click the "New repository secret" button
-   7. Give the secret name `CODECOV_TOKEN` and the Secret value is the value you noted from the Codecov settings
-   8. Click "Add secret"
+To locally run the test suite, run the following command
+```
+julia --project=test test/runtests.jl
+```
 
-4. Clone the new repository, for example in the terminal:
-   ```sh
-   git clone https://github.com/AlgebraicJulia/AlgebraicX.jl.git
-   cd AlgebraicX.jl
-   ```
-5. Inspect for yourself and run `init.sh` with the new repository name and (optional) UUID are parameters. This script will substitute all instances of `AlgebraicX` with your new repository name and the default UUID with a new one or, if available, the UUID provided.
-6. Go back to your repository and wait until the tests have passed, you can check the status by going to the "Actions" tab in the repository
-
-### Buildkite
+### To-do: Buildkite
 
 AlgebraicJulia uses [Buildkite](https://buildkite.com/) to submit resource-intensive processes such as building documentation and executing tests to the [HiPerGator](https://www.rc.ufl.edu/about/hipergator/) computing cluster.
 
 While this template comes with a preconfigured `.buildkite/pipeline.yml` file, this repository is not integrated with Buildkite by default. If you would like your repository to use Buildkite to run processes on HiPerGator, tag an issue with @AlgebraicJulia/SysAdmins. 
 
-### 📔 Set Up GitHub Pages (Public Repos Only)
+### 📔 To-do: Set Up GitHub Pages (Public Repos Only)
 
 1. Follow the Usage steps above to set up a new template, make sure all initial GitHub Actions have passed
 2. Navigate to the repository settings and go to "Code and automation", "Pages"
@@ -45,21 +40,3 @@ While this template comes with a preconfigured `.buildkite/pipeline.yml` file, t
 5. Go back to the main page of your repository and click the gear to the right of the "About" section in the right side column
 6. Under "Website" check the checkbox that says "Use your GitHub Pages website" and click "Save changes"
 7. You will now see a URL in the "About" section that will link to your package's documentation
-
-### 🛡️ Set Up Branch Protection (Public Repos Only)
-
-1. Follow the Usage steps above to set up a new template, make sure all initial GitHub Actions have passed
-2. Navigate to the repository settings and go to "Code and automation", "Branches"
-3. Click "Add branch protection rule" to start adding branch protection
-4. Under "Branch name pattern" put `main`, this will add protection to the main branch
-5. Make sure to set the following options:
-   - Check the "Require a pull request before merging"
-   - Check the "Request status checks to pass before merging" and make sure the following status checks are added to the required list:
-     - CI / Documentation
-     - CI / Julia 1 - ubuntu-latest - x64 - push
-     - CI / Julia 1 - ubuntu-latest - x86 - push
-     - CI / Julia 1 - windows-latest - x64 - push
-     - CI / Julia 1 - windows-latest - x86 - push
-     - CI / Julia 1 - macOS-latest - x64 - push
-   - Check the "Restrict who can push to matching branches" and add `algebraicjuliabot` to the list of people with push access
-6. Click "Save changes" to enable the branch protection

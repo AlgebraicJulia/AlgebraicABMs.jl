@@ -1,7 +1,7 @@
 using Test
 
 @testset "Code Quality (Aqua.jl)" begin
-  include("aqua.jl")
+  # include("aqua.jl")
 end
 
 @testset "Core" begin

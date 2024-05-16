@@ -5,10 +5,10 @@ module AlgebraicABMs
 
 using Reexport
 
+include("ABMs.jl")
 include("Distributions.jl")
 include("RewriteSemiMarkov.jl")
 include("PetriInterface.jl")
-include("ABMs.jl")
 
 @reexport using .Distributions
 @reexport using .PetriInterface

@@ -1,10 +1,9 @@
 module RewriteSemiMarkov
 
-export run!
-
 using Catlab, AlgebraicRewriting, AlgebraicPetri
 using Random
 using Fleck
+import ..ABMs: run!
 # --------------------------------------------------------------------------------
 # we want something to store the rules, clocks associated to each, and their type
 

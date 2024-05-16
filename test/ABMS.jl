@@ -1,35 +1,48 @@
 module TestABMs
 
-# ENV["JULIA_DEBUG"] = "AlgebraicABMs"
+ENV["JULIA_DEBUG"] = "AlgebraicABMs" # turn on @debug messages for this package
 
 using Test
 using AlgebraicABMs
-
 using Catlab, AlgebraicRewriting
 
-using AlgebraicABMs.ABMs: ABMRule, DiscreteHazard, ContinuousHazard, RegularP, 
-                          EmptyP, RepresentableP, RuntimeABM
+using AlgebraicABMs.ABMs: RegularP, EmptyP, RepresentableP, RuntimeABM
 
-create_vertex = ABMRule(Rule(id(Graph()), create(ob(terminal(Graph)))), DiscreteHazard(1.))
-@test create_vertex.pattern_type == EmptyP()
+# L = ∅, I = ∅, R = •↺
+create_loop = ABMRule(Rule(id(Graph()), # l : I -> L
+                           create(ob(terminal(Graph)))), # r : I → R
+                      DiscreteHazard(1.)) # Dirac delta, indep. of clock time / state
 
-add_loop = ABMRule(Rule(id(Graph(1)), delete(Graph(1))), DiscreteHazard(1.5))
-@test add_loop.pattern_type isa RepresentableP
+# check that we know this rule has an empty pattern L
+@test create_loop.pattern_type == EmptyP()
 
+# • ← • → •↺
+add_loop = ABMRule(Rule(id(Graph(1)), # 
+                        delete(Graph(1))),  # r : I -> R
+                   DiscreteHazard(1.5))
+@test add_loop.pattern_type == RepresentableP(Dict(:V=>[1]))
+
+# •↺ ⇽ • → •
 rem_loop = ABMRule(Rule(delete(Graph(1)), id(Graph(1))), DiscreteHazard(2))
 @test rem_loop.pattern_type == RegularP()
 
-rem_edge = ABMRule(Rule(homomorphism(Graph(2), path_graph(Graph, 2); 
-                        monic=true), id(Graph(2))), ContinuousHazard(1))
-@test rem_edge.pattern_type isa RepresentableP
+# •→• ⇽ • → •
+rem_edge = ABMRule(Rule(homomorphism(Graph(2), path_graph(Graph, 2); monic=true), 
+                        id(Graph(2))), 
+                   ContinuousHazard(1))
+@test rem_edge.pattern_type == RepresentableP(Dict(:E=>[1]))
 
-
+# Create initial state 
 G = @acset Graph begin V=3; E=3; src=[1,1,1]; tgt=[1,1,2] end
-abm = ABM([create_vertex, add_loop, rem_loop, rem_edge])
+to_graphviz(G)
 
-@test only(RuntimeABM(abm, G).clocks[3].val.match_vect)[1][:E](1) == 1 # One cached hom
+# Assemble rules into ABM
+abm = ABM([create_loop, add_loop, rem_loop, rem_edge])
 
+# 2 loops, so 2 cached homs for the only rule with an explicit hom set
+@test length(only(RuntimeABM(abm, G).clocks[3].val.match_vect)) == 2
 
-traj = run!(abm, G);
+traj = run!(abm, G; maxevent=10);
+@test length(traj) == 10
 
 end # module

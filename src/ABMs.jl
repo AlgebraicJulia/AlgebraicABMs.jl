@@ -1,7 +1,7 @@
 
 module ABMs
 
-export ABM, ABMRule, Migrate′, run!, DiscreteHazard, ContinuousHazard, FullClosure, 
+export ABM, ABMRule, run!, DiscreteHazard, ContinuousHazard, FullClosure, 
        ClosureState, ClosureTime
 
 using Distributions, Fleck, Random
@@ -10,56 +10,14 @@ using StructEquality
 
 using Catlab, AlgebraicRewriting
 using AlgebraicPetri: AbstractReactionNet
-using AlgebraicRewriting.Incremental: connected_acset_components, key_dict
-using AlgebraicRewriting.Rewrite.Migration: pres_hash
+using AlgebraicRewriting.Incremental: connected_acset_components
 using AlgebraicRewriting.Rewrite.Utils: get_pmap, get_rmap, get_expr_binding_map
-import Catlab: acset_schema, right, is_isomorphic, Presentation
-import AlgebraicRewriting: get_match, ruletype, Migrate
+import Catlab: right
+import AlgebraicRewriting: get_match, ruletype
 import AlgebraicRewriting.Incremental: addition!, deletion!
 
-# Possibly upstream
-###################
-Presentation(p::Presentation) = p
-is_isomorphic(f::FinFunction) = is_monic(f) && is_epic(f)
-
-pattern(r::Rule) = codom(left(r))
-
-acset_schema(r::Rule) = acset_schema(pattern(r))
-
-Base.pairs(h::IncHomSet) = [k => h[k] for k in keys(key_dict(h))]
-
-"""
-Extract data in representable cache as a dictionary.
-This is an intermediate step in yoneda_cache that should be factored out.
-"""
-function repr_dict(T::Type, S=nothing; cache="cache")::Dict{Symbol, Tuple{ACSet, Int}}
-  S = Presentation(isnothing(S) ? T : S)
-  yoneda_cache(T, S; cache)
-  cache_dir = joinpath(cache, "$(nameof(T))_$(pres_hash(S))")
-  Dict(map(nameof.(generators(S, :Ob))) do name
-    path, ipath = joinpath.(cache_dir, ["$name.json", "_id_$name.json"])
-    name => (read_json_acset(T, path), parse(Int,open(io->read(io, String), ipath)))
-  end)
-end
-
-"""
-Extend AlgebraicRewriting.Migrate to include schema information about domain 
-and codomain.
-"""
-struct Migrate′
-  F::Migrate
-  dom::Presentation
-  codom::Presentation
-  Migrate′(o::AbstractDict,
-           h::AbstractDict,
-           s1::Presentation,
-           t1::Type,
-           s2=nothing,
-           t2=nothing; 
-           delta::Bool=true) = 
-    new(Migrate(o, h, t1, t2; delta), s1, isnothing(s2) ? s1 : s2)
-end
-
+using ..Upstream: Migrate′, repr_dict
+import ..Upstream: pattern
 
 # Timers
 ########

@@ -19,7 +19,7 @@ create_loop = ABMRule(Rule(id(Graph()), # l : I -> L
 # • ← • → •↺
 add_loop = ABMRule(Rule(id(Graph(1)), # 
                         delete(Graph(1))),  # r : I -> R
-                   DiscreteHazard(1.5))
+                   ContinuousHazard(1.5))
 @test add_loop.pattern_type == RepresentableP(Dict(:V=>[1]))
 
 # •↺ ⇽ • → •

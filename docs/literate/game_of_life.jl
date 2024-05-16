@@ -88,7 +88,7 @@ is to assign "variables" for the values of the coordinates).
 idₒ = Dict(x => x for x in Symbol.(generators(SchLifeGraph, :Ob)))
 idₘ = Dict(x => x for x in Symbol.(generators(SchLifeGraph, :Hom)))
 AddCoords = Migrate′(idₒ, idₘ, SchLifeGraph, Life, SchLifeCoords, LifeCoords; delta=false);
-
+RemCoords = DeltaMigration(FinFunctor(idₒ, idₘ, SchLifeGraph, SchLifeCoords))
 # ## Helper constants and functions 
 const Dead = Life(1) # a single dead cell
 const Live = @acset Life begin V=1; Life=1; live=1 end # a single living cell
@@ -116,7 +116,8 @@ TickRule(args...; kw...) = # Rule which fires on 1.0, 2.0, ...
 # A cell is born iff it has three living neighbors
 birth = TickRule(id(Dead), to_life; 
                  ac=[PAC(living_neighbors(3; alive=false)),
-                     NAC(living_neighbors(4; alive=false))]);
+                     NAC(living_neighbors(4; alive=false)),
+                     NAC(to_life)]);
 
 # A cell is born iff it has ≥ 2 living neighbors but < 4 living neighbors
 death = TickRule(to_life, id(Dead); 
@@ -133,6 +134,8 @@ G = make_grid([1 0 1 0 1;
                1 0 1 0 1;
                1 0 1 0 1])
 view_life(G);
-
+G = make_grid(ones(1,1))
 # Run the model
-res = run!(AddCoords(GoL), G; maxevent=3);
+migrate(Life, G, RemCoords)
+get_matches(birth.rule, migrate(Life, G, RemCoords))
+res = run!(AddCoords(GoL), G; maxevent=2);

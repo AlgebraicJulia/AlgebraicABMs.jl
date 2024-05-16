@@ -57,7 +57,7 @@ count(acs::ACSet) =
 sirout = run!(sir_pn, clockdists, init; save=count, maxevent=2000)
 X = first.(sirout)
 SIR = [getindex.(last.(sirout), x) for x in 1:3]
-f = Figure();
+f = Figure()
 Legend(f[1, 2], lines!.(Ref(Axis(f[1,1])), Ref(X), SIR), ["S", "I","R"])
 
 ## We can also save the figure to the filesystem.

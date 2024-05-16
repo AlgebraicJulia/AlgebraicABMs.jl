@@ -1,7 +1,7 @@
 
 module ABMs
 
-export ABM, ABMRule, run!, DiscreteHazard, ContinuousHazard, FullClosure, 
+export ABM, ABMRule, Migrate′, run!, DiscreteHazard, ContinuousHazard, FullClosure, 
        ClosureState, ClosureTime
 
 using Distributions, Fleck, Random
@@ -12,13 +12,14 @@ using Catlab, AlgebraicRewriting
 using AlgebraicPetri: AbstractReactionNet
 using AlgebraicRewriting.Incremental: connected_acset_components, key_dict
 using AlgebraicRewriting.Rewrite.Migration: pres_hash
-using AlgebraicRewriting.Rewrite.Utils: get_pmap, get_rmap
-import Catlab: acset_schema, right, is_isomorphic
-import AlgebraicRewriting: get_match, ruletype
+using AlgebraicRewriting.Rewrite.Utils: get_pmap, get_rmap, get_expr_binding_map
+import Catlab: acset_schema, right, is_isomorphic, Presentation
+import AlgebraicRewriting: get_match, ruletype, Migrate
 import AlgebraicRewriting.Incremental: addition!, deletion!
 
 # Possibly upstream
 ###################
+Presentation(p::Presentation) = p
 is_isomorphic(f::FinFunction) = is_monic(f) && is_epic(f)
 
 pattern(r::Rule) = codom(left(r))
@@ -39,6 +40,24 @@ function repr_dict(T::Type, S=nothing; cache="cache")::Dict{Symbol, Tuple{ACSet,
     path, ipath = joinpath.(cache_dir, ["$name.json", "_id_$name.json"])
     name => (read_json_acset(T, path), parse(Int,open(io->read(io, String), ipath)))
   end)
+end
+
+"""
+Extend AlgebraicRewriting.Migrate to include schema information about domain 
+and codomain.
+"""
+struct Migrate′
+  F::Migrate
+  dom::Presentation
+  codom::Presentation
+  Migrate′(o::AbstractDict,
+           h::AbstractDict,
+           s1::Presentation,
+           t1::Type,
+           s2=nothing,
+           t2=nothing; 
+           delta::Bool=true) = 
+    new(Migrate(o, h, t1, t2; delta), s1, isnothing(s2) ? s1 : s2)
 end
 
 
@@ -96,9 +115,13 @@ DiscreteHazard(t::Number) = DiscreteHazard(Dirac(t))
   val::Distribution{Univariate, Continuous}
 end
 
+"""Check if a hazard rate is a simple exponential"""
+is_exp(h::ContinuousHazard) = h.val isa Distributions.Exponential
+is_exp(h::AbsHazard) = false
+
 ContinuousHazard(p::Number) = ContinuousHazard(Exponential(p))
 
-get_hazard(m::ACSetTransformation, t::Float64, h::FullClosure) = h(m,t)
+get_hazard(m::ACSetTransformation, t::Float64, h::FullClosure) = h(m, t)
 
 get_hazard(::ACSetTransformation, t::Float64, h::ClosureTime) = h(t)
 
@@ -144,7 +167,8 @@ extensions that define the representables (usually this is just wherever the
 colimit leg sends 1, as there is often just one X part in the representable X).
 
 WARNING: this is only viable if the timer associated with the rewrite rule is
-symmteric with respect to the disjoint representables.
+symmteric with respect to the disjoint representables and has a simple
+exponential timer.
 """
 @struct_hash_equal struct RepresentableP <: PatternType
   parts::Dict{Symbol, Vector{Int}}
@@ -154,32 +178,41 @@ Base.keys(p::RepresentableP) = keys(p.parts)
 
 """
 Analyze a pattern to find the most efficient pattern type for it.
+
+Because ACSet types do not know their own equations, we may have to pass the 
+schema as an argument in order to compute representables that would otherwise 
+be infinite.
+
+Even if the pattern is a coproduct of representables, we cannot use the 
+efficient encoding unless the distribution is either an exponential.
 """
-function pattern_type(r::Rule)
+function pattern_type(r::Rule, is_exp::Bool; schema=nothing)
   p = pattern(r)
-  S = acset_schema(p)
+  S = isnothing(schema) ? acset_schema(p) : schema
   
   # Check empty case
   isempty(p) && return EmptyP()
 
   # Determine if pattern is a coproduct of representables
-  repr_loc = DefaultDict{Symbol, Vector{Int}}(() -> Int[])
-  reprs = repr_dict(typeof(p), S)
-  ccs, iso′ = connected_acset_components(p)
-  iso = invert_iso(iso′)
-  for cc_leg in legs(ccs)
-    found = false
-    for (o, (repr, i)) in pairs(reprs)
-      α = isomorphism(repr, dom(cc_leg)) 
-      if !isnothing(α)
-        push!(repr_loc[o], iso[o](cc_leg[o](α[o](i))))
-        found = true
-        break
+  if is_exp
+    repr_loc = DefaultDict{Symbol, Vector{Int}}(() -> Int[])
+    reprs = repr_dict(typeof(p), S)
+    ccs, iso′ = connected_acset_components(p)
+    iso = invert_iso(iso′)
+    for cc_leg in legs(ccs)
+      found = false
+      for (o, (repr, i)) in pairs(reprs)
+        α = isomorphism(repr, dom(cc_leg)) 
+        if !isnothing(α)
+          push!(repr_loc[o], iso[o](cc_leg[o](α[o](i))))
+          found = true
+          break
+        end
       end
+      found || break
     end
-    found || break
+    length(ccs) == sum(length.(values(repr_loc))) && return RepresentableP(repr_loc)
   end
-  length(ccs) == sum(length.(values(repr_loc))) && return RepresentableP(repr_loc)
 
   # Determine if pattern is discrete
   # all(ob(S)) do o 
@@ -196,7 +229,8 @@ A stochastic rewrite rule with a dependent hazard rate
   rule::Rule
   timer::AbsTimer 
   pattern_type::PatternType
-  ABMRule(r::Rule, t::AbsTimer) = new(r, t, pattern_type(r))
+  ABMRule(r::Rule, t::AbsTimer; schema=nothing) = 
+    new(r, t, pattern_type(r, is_exp(t); schema))
 end
 
 getrule(r::ABMRule) = r.rule
@@ -209,18 +243,30 @@ right(r::ABMRule) = right(getrule(r))
 
 ruletype(r::ABMRule) = ruletype(getrule(r))
 
+(F::Migrate′)(r::ABMRule) = 
+  ABMRule(F.F(r.rule), r.timer; schema=F.F.delta ? F.dom : F.codom)
+
+"""
+A type which implements AbsDynamics must be able to compiled to an ODE for some 
+set of variables.
+"""
 abstract type AbsDynamics end 
 
-"""Use a petri net with rates"""
+"""Use a Petri Net with rates"""
 @struct_hash_equal struct PetriDynamics <: AbsDynamics 
   val::AbstractReactionNet
+end
+
+"""Use a Stock Flow diagram (possibly this could be in a package extension)"""
+@struct_hash_equal struct StockFlowDynamics <: AbsDynamics 
+  val::Any # TODO: integrate with StockFlow.jl. 
 end
 
 """Continuous dynamics"""
 @struct_hash_equal struct ABMFlow 
   pat::ACSet
   dyn::AbsDynamics
-  mapping::Vector{Pair{Symbol, Int}} # pair pat's variables  w/ dyn quantities
+  mapping::Vector{Pair{Symbol, Int}} # pair pat's variables w/ dyn quantities
 end 
 
 """
@@ -233,6 +279,8 @@ An agent-based model.
 end
 
 additions(abm::ABM) = right.(abm.rules)
+
+(F::Migrate′)(abm::ABM) = ABM(F.(abm.rules), abm.dyn)
 
 """A collection of timers associated at runtime w/ an ABMRule"""
 abstract type AbsHomSet end
@@ -255,7 +303,7 @@ addition!(h::ExplicitHomSet, k, r, u) = addition!(h.val, k, r, u)
 
 """Initialize runtime hom-set given the rule and the initial state"""
 function init_homset(rule::ABMRule, state::ACSet, additions::Vector{<:ACSetTransformation})
-  p, sd = pattern_type(getrule(rule)), state_dep(rule.timer)
+  p, sd = pattern_type(rule), state_dep(rule.timer)
   p == EmptyP() && return EmptyHomSet()
   (sd || p == RegularP()) && return ExplicitHomSet(IncHomSet(pattern(rule), additions, state))
   @assert p isa RepresentableP  "$(typeof(p))"
@@ -263,6 +311,7 @@ function init_homset(rule::ABMRule, state::ACSet, additions::Vector{<:ACSetTrans
 end 
 
 const Maybe{T} = Union{Nothing, T}
+
 const KeyType = Union{Pair{Int, Int}}                  # connected comp. homset
                       Tuple{Int,Vector{Pair{Int,Int}}} # multi-component homset
 
@@ -297,10 +346,10 @@ end
 
 state(r::RuntimeABM) = r.state
 
-Base.haskey(rt::RuntimeABM, k) = haskey(rt.sampler.transition_entry, k)
+Base.haskey(rt::RuntimeABM, k::Pair) = haskey(rt.sampler.transition_entry, k)
 
 Base.haskey(rt::RuntimeABM, k::Int) = 
-  haskey(rt.sampler.transition_entry, k=>nothing)
+  haskey(rt.sampler.transition_entry, k => nothing)
 
 """Pick the next random event, advance the clock"""
 function Fleck.next(rt::RuntimeABM)
@@ -393,10 +442,12 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
     m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
 
     # Excute rewrite rule and unpack results
-    rw_result = (rule_type, rewrite_match_maps(getrule(abm.rules[event]), m))
-    rmap::ACSetTransformation = get_rmap(rw_result...)
-    (lft, rght) = pmap = get_pmap(rw_result...)
-
+    rw_result = (rule_type, rewrite_match_maps(getrule(rule), m))
+    rmap_ = get_rmap(rw_result...)
+    xmap_ = get_expr_binding_map(getrule(rule), m, rw_result[2])
+    (lft, rght_) = get_pmap(rw_result...)
+    rmap, rght = compose.([rmap_,rght_],Ref(xmap_))
+    pmap = Span(lft, rght)
     rt.state = codom(rmap) # update runtime state
     log!(event, pmap)      # record event result
 

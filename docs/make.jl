@@ -55,6 +55,7 @@ makedocs(
     "AlgebraicABMs.jl"=>"index.md",
     "Examples"=>Any[
       "generated/petri_example.md",
+      "generated/game_of_life.md",
     ],
     "Library Reference"=>"api.md",
   ]

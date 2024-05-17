@@ -45,4 +45,12 @@ abm = ABM([create_loop, add_loop, rem_loop, rem_edge])
 traj = run!(abm, G; maxevent=10);
 @test length(traj) == 10
 
+traj = run!(ABM([rem_edge]), G);
+@test length(traj) == 3
+
+
+traj = run!(ABM([add_loop]), G);
+@test length(traj) > 3 # after we add a loop, the match persists and is resampled
+
+
 end # module

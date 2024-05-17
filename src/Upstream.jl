@@ -6,6 +6,8 @@ using Catlab, AlgebraicRewriting
 import Catlab: acset_schema, is_isomorphic, Presentation
 using AlgebraicRewriting.Rewrite.Migration: pres_hash
 using AlgebraicRewriting.Incremental: key_dict
+using Fleck: SSA, disable!, next
+using Distributions: AbstractRNG
 
 # Upstream to Catlab
 ####################
@@ -68,5 +70,14 @@ struct Migrate′
     new(Migrate(o, h, t1, t2; delta), s1, isnothing(s2) ? s1 : s2)
 end
 
+# Fleck
+#######
+"""Get the next event and disable it"""
+function Base.pop!(sampler::SSA{K,T}, rng::AbstractRNG, 
+                   tnow::T)::Tuple{T,K} where {K,T}
+  (new_time, which) = next(sampler, tnow, rng)
+  disable!(sampler, which, new_time)
+  return (new_time, which)
+end 
 
 end # module

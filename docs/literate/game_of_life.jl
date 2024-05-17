@@ -14,7 +14,7 @@ using AlgebraicABMs, Catlab, AlgebraicRewriting
   live::Hom(Life,V)
 end
 
-@acset_type Life(SchLifeGraph) <: AbstractSymmetricGraph;
+@acset_type LifeState(SchLifeGraph) <: AbstractSymmetricGraph;
 
 to_graphviz(SchLifeGraph)
 
@@ -27,7 +27,7 @@ to_graphviz(SchLifeGraph)
   coords::Attr(V, Coords)
 end
 
-@acset_type LifeCoords(SchLifeCoords){Tuple{Int,Int}} <: AbstractSymmetricGraph;
+@acset_type LifeStateCoords(SchLifeCoords){Tuple{Int,Int}} <: AbstractSymmetricGraph;
 
 to_graphviz(SchLifeCoords)
 
@@ -35,7 +35,7 @@ to_graphviz(SchLifeCoords)
 function make_grid(curr::AbstractMatrix)
   n, m = size(curr)
   n == m || error("Must be square")
-  X, coords = LifeCoords(), Dict()
+  X, coords = LifeStateCoords(), Dict()
   for i in 1:n, j in 1:n
     coords[i=>j] = add_vertex!(X; coords=(i, j))
     Bool(curr[i, j]) && add_part!(X, :Life, live=coords[i=>j])
@@ -54,14 +54,14 @@ make_grid(n::Int, random=true) =
   make_grid((random ? rand : zeros)(Bool, (n, n)));
 
 # Visualize a game state (using coordinates if available)
-function view_life(X::Union{Life, LifeCoords}, pth=tempname())
+function view_life(X::Union{LifeState, LifeStateCoords}, pth=tempname())
   pg = PropertyGraph{Any}(; prog="neato", graph=Dict(),
     node=Dict(:shape => "circle", :style => "filled", :margin => "0"),
     edge=Dict(:dir => "none", :minlen => "1"))
   add_vertices!(pg, nparts(X, :V))
   for v in vertices(X)
     set_vprop!(pg, v, :fillcolor, isempty(incident(X, v, :live)) ? "red" : "green")
-    if X isa LifeCoords 
+    if X isa LifeStateCoords 
       x, y = X[v, :coords]
       set_vprop!(pg, v, :pos, "$x,$(y)!")
     end
@@ -87,23 +87,23 @@ is to assign "variables" for the values of the coordinates).
 
 idₒ = Dict(x => x for x in Symbol.(generators(SchLifeGraph, :Ob)))
 idₘ = Dict(x => x for x in Symbol.(generators(SchLifeGraph, :Hom)))
-AddCoords = Migrate′(idₒ, idₘ, SchLifeGraph, Life, SchLifeCoords, LifeCoords; delta=false);
+AddCoords = Migrate′(idₒ, idₘ, SchLifeGraph, LifeState, SchLifeCoords, LifeStateCoords; delta=false);
 RemCoords = DeltaMigration(FinFunctor(idₒ, idₘ, SchLifeGraph, SchLifeCoords))
 # ## Helper constants and functions 
-const Dead = Life(1) # a single dead cell
-const Live = @acset Life begin V=1; Life=1; live=1 end # a single living cell
-const to_life = homomorphism(Dead, Live)  # the unique map Dead → Live
+const DeadCell = LifeState(1) # a single dead cell
+const LiveCell = @acset LifeState begin V=1; Life=1; live=1 end # a single living cell
+const to_life = homomorphism(DeadCell, LiveCell)  # the unique map Dead → Live
 
 """Create a context of n living neighbors for either a dead or alive cell"""
 function living_neighbors(n::Int; alive=true)::ACSetTransformation
-  X = Life(1)
+  X = LifeState(1)
   alive && add_part!(X, :Life, live=1)
   for _ in 1:n
     v = add_part!(X, :V)
     add_part!(X, :Life, live=v)
     add_edge!(X, v, 1)
   end
-  homomorphism(alive ? Live : Dead, X; initial=(V=[1],))
+  homomorphism(alive ? LiveCell : DeadCell, X; initial=(V=[1],))
 end;
 
 PAC(m) = AppCond(m; monic=true) # Positive Application condition
@@ -114,13 +114,13 @@ TickRule(args...; kw...) = # Rule which fires on 1.0, 2.0, ...
 # ## Create model by defining update rules
 
 # A cell is born iff it has three living neighbors
-birth = TickRule(id(Dead), to_life; 
+birth = TickRule(id(DeadCell), to_life; 
                  ac=[PAC(living_neighbors(3; alive=false)),
                      NAC(living_neighbors(4; alive=false)),
                      NAC(to_life)]);
 
 # A cell is born iff it has ≥ 2 living neighbors but < 4 living neighbors
-death = TickRule(to_life, id(Dead); 
+death = TickRule(to_life, id(DeadCell); 
                  ac=[PAC(living_neighbors(2)), 
                      NAC(living_neighbors(4))]);
  
@@ -136,6 +136,4 @@ G = make_grid([1 0 1 0 1;
 view_life(G);
 G = make_grid(ones(1,1))
 # Run the model
-migrate(Life, G, RemCoords)
-get_matches(birth.rule, migrate(Life, G, RemCoords))
 res = run!(AddCoords(GoL), G; maxevent=2);

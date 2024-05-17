@@ -142,7 +142,8 @@ schema as an argument in order to compute representables that would otherwise
 be infinite.
 
 Even if the pattern is a coproduct of representables, we cannot use the 
-efficient encoding unless the distribution is either an exponential.
+efficient encoding unless the distribution is either an exponential 
+(or a single dirac delta - not yet supported).
 """
 function pattern_type(r::Rule, is_exp::Bool; schema=nothing)
   p = pattern(r)
@@ -227,6 +228,11 @@ end
   mapping::Vector{Pair{Symbol, Int}} # pair pat's variables w/ dyn quantities
 end 
 
+const Maybe{T} = Union{Nothing, T}
+
+const KeyType = Union{Pair{Int, Int}}                  # connected comp. homset
+                      Tuple{Int,Vector{Pair{Int,Int}}} # multi-component homset
+
 """
 An agent-based model.
 """
@@ -251,6 +257,8 @@ abstract type AbsHomSet end
 
 Base.keys(h::ExplicitHomSet) = keys(h.val)
 
+Base.haskey(h::ExplicitHomSet, k::KeyType) = haskey(h.val, k)
+
 Base.pairs(h::ExplicitHomSet) = pairs(h.val)
 
 Base.getindex(h::ExplicitHomSet, i) = h.val[i]
@@ -267,11 +275,6 @@ function init_homset(rule::ABMRule, state::ACSet, additions::Vector{<:ACSetTrans
   @assert p isa RepresentableP  "$(typeof(p))"
   return DiscreteHomSet()
 end 
-
-const Maybe{T} = Union{Nothing, T}
-
-const KeyType = Union{Pair{Int, Int}}                  # connected comp. homset
-                      Tuple{Int,Vector{Pair{Int,Int}}} # multi-component homset
 
 const default_sampler = FirstToFire{
   Union{Pair{Int, Nothing},   # non-explicit homset
@@ -309,10 +312,10 @@ Base.haskey(rt::RuntimeABM, k::Pair) = haskey(rt.sampler.transition_entry, k)
 Base.haskey(rt::RuntimeABM, k::Int) = 
   haskey(rt.sampler.transition_entry, k => nothing)
 
-"""Pick the next random event, advance the clock"""
+"""Pop the next random event, advance the clock"""
 function Fleck.next(rt::RuntimeABM)
   rt.nevent += 1
-  (rt.tnow, which) = next(rt.sampler, rt.tnow, rt.rng)
+  (rt.tnow, which) = pop!(rt.sampler, rt.rng, rt.tnow)
   return which
 end
 
@@ -364,10 +367,10 @@ Run an ABM, creating a fresh runtime + trajectory.
 """
 function run!(abm::ABM, init::T; save=deepcopy, maxevent=MAXEVENT, maxtime=Inf, 
               kw...) where T<:ACSet 
-  run!(abm::ABM, RuntimeABM(abm, init; kw...), Traj(init); save, maxevent)
+  run!(abm::ABM, RuntimeABM(abm, init; kw...), Traj(init); save, maxtime, maxevent)
 end
 
-function run!(abm::ABM, rt::RuntimeABM, output::Traj; 
+function run!(abm::ABM, rt::RuntimeABM, output::Traj;
               save=deepcopy, maxevent=MAXEVENT, maxtime=Inf)
 
   # Helper functions that automatically incorporate the runtime `rt`
@@ -381,55 +384,55 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
 
   # Main loop
   while rt.nevent < maxevent && rt.tnow < maxtime
-    # get next event + update clock time
-    which = next(rt)
-
-    if isnothing(which)
+    if length(rt.sampler) == 0 
       @info "Stochastic scheduling algorithm ran out of events"
       return output
     end
 
-    # Unpack data associated with the current event
-    event::Int, key::Maybe{KeyType} = which
+    # Get next event + unpack data
+    event::Int, key::Maybe{KeyType} = next(rt) # updates the clock time
     rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
     rule_type::Symbol = ruletype(rule) # DPO, SPO, etc.
 
     @debug "$(length(output)): event $event fired @ $(rt.tnow)"
-
+    show(stdout,"text/plain", rt.state)
     # If RegularPattern, we have an explicit match, otherwise randomly pick one
     m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
 
     # Excute rewrite rule and unpack results
     rw_result = (rule_type, rewrite_match_maps(getrule(rule), m))
     rmap_ = get_rmap(rw_result...)
-    xmap_ = get_expr_binding_map(getrule(rule), m, rw_result[2])
+    xmap = get_expr_binding_map(getrule(rule), m, rw_result[2])
     (lft, rght_) = get_pmap(rw_result...)
-    rmap, rght = compose.([rmap_,rght_],Ref(xmap_))
+    rmap, rght = compose.([rmap_,rght_], Ref(xmap))
     pmap = Span(lft, rght)
     rt.state = codom(rmap) # update runtime state
     log!(event, pmap)      # record event result
 
-    # update matches for all events 
-    #------------------------------
-    # The only time EmptyPattern rules update is when they are fired
-    if pattern_type(rule) == EmptyP()   
-      disable!′(which)
-      enable!′(create(rt.state), event)
-    end
     # All other rules can potentially update in response to the current event
     for (i, (ruleᵢ, clocksᵢ)) in enumerate(zip(abm.rules, rt.clocks))
       pt = pattern_type(ruleᵢ)
-      if pt == RegularP() # update explicit hom-set w/r/t span Xₙ ↩ • -> Xₙ₊₁
+      if pt == EmptyP()
+        i == event && enable!′(create(rt.state), i)
+      elseif pt == RegularP() # update explicit hom-set w/r/t span Xₙ ↩ • -> Xₙ₊₁
         for d in deletion!(clocksᵢ, lft)
-          disable!′(i => d) # disable clocks which are invalidated
+          # disable clocks which are invalidated
+          # note that (event,key) is already diabled
+          (i,d)==(event,key) || disable!′(i => d) 
         end
         for a in addition!(clocksᵢ, event, rmap, rght) # rght: R → Xₙ₊₁
           enable!′(clocksᵢ[a], i, a)
         end
+        # If the match that just fired is still preserved
+        if i == event && haskey(clocksᵢ, key)
+          enable!′(clocksᵢ[key], i, key)
+        end
       elseif pt isa RepresentableP
         relevant_obs = keys(pt)
         # we need to update current timer if # of parts has changed
-        if !all(ob -> allequal(nparts.(codom.(pmap), Ref(ob))), relevant_obs)
+        if i == event && all(>(0), nparts.(Ref(rt.state), relevant_obs))
+          enable!′(create(rt.state), i)
+        elseif !all(ob -> allequal(nparts.(codom.(pmap), Ref(ob))), relevant_obs)
           currently_enabled = haskey(rt, i)
           currently_enabled && disable!′(i) # Disable if active
           # enable new timer if possible to apply rule

@@ -3,17 +3,14 @@ module Upstream
 export Migrate′
 
 using Catlab, AlgebraicRewriting
-import Catlab: acset_schema, is_isomorphic, Presentation
+import Catlab: is_isomorphic, Presentation
 using AlgebraicRewriting.Rewrite.Migration: pres_hash
-using AlgebraicRewriting.Incremental: key_dict
 using Fleck: SSA, disable!, next
 using Distributions: AbstractRNG
 
 # Upstream to Catlab
 ####################
 Presentation(p::Presentation) = p
-is_isomorphic(f::FinFunction) = is_monic(f) && is_epic(f)
-
 
 """
 Turn any span into a partial map by quotienting I and R by the left map: epi-mono factorize I → L and then take a pushout. 
@@ -32,11 +29,6 @@ end
 
 # Upstream to AlgRewriting
 ##########################
-pattern(r::Rule) = codom(left(r))
-
-acset_schema(r::Rule) = acset_schema(pattern(r))
-
-Base.pairs(h::IncHomSet) = [k => h[k] for k in keys(key_dict(h))]
 
 """
 Extract data in representable cache as a dictionary.
@@ -69,6 +61,9 @@ struct Migrate′
            delta::Bool=true) = 
     new(Migrate(o, h, t1, t2; delta), s1, isnothing(s2) ? s1 : s2)
 end
+
+(f::Migrate′)(x::ACSet) = f.F(x)
+(f::Migrate′)(x::ACSetTransformation) = f.F(x)
 
 # Fleck
 #######

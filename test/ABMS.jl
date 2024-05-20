@@ -7,6 +7,7 @@ using AlgebraicABMs
 using Catlab, AlgebraicRewriting
 
 using AlgebraicABMs.ABMs: RegularP, EmptyP, RepresentableP, RuntimeABM
+using AlgebraicRewriting.Incremental.IncrementalCC: match_vect
 
 # L = ∅, I = ∅, R = •↺
 create_loop = ABMRule(Rule(id(Graph()), # l : I -> L
@@ -40,7 +41,7 @@ to_graphviz(G)
 abm = ABM([create_loop, add_loop, rem_loop, rem_edge])
 
 # 2 loops, so 2 cached homs for the only rule with an explicit hom set
-@test length(only(RuntimeABM(abm, G).clocks[3].val.match_vect)) == 2
+@test length(only(match_vect(RuntimeABM(abm, G).clocks[3].val))) == 2
 
 traj = run!(abm, G; maxevent=10);
 @test length(traj) == 10
@@ -51,6 +52,14 @@ traj = run!(ABM([rem_edge]), G);
 
 traj = run!(ABM([add_loop]), G);
 @test length(traj) > 3 # after we add a loop, the match persists and is resampled
+
+
+# Test events in parallel
+create_loop = ABMRule(Rule(id(Graph(1)), delete(Graph(1))), DiscreteHazard(1.))
+create_vert = ABMRule(Rule(id(Graph()),  create(Graph(1))), DiscreteHazard(1.))
+
+traj = run!(ABM([create_loop, create_vert]), Graph(); maxtime=5);
+
 
 
 end # module

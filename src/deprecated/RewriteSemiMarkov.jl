@@ -39,7 +39,7 @@ const ClockKeyType = Tuple{Int,Vector{Pair{Int,Int}}}
 The acset type that stores instances of `SchClockSystem`
 """
 @acset_type AbsClockSystem(SchClockSystem, index=[:event], unique_index=[:name,:key])
-const ClockSystem=AbsClockSystem{Symbol,Rule,Function,Incremental.IncSumHomSet,ClockKeyType, AbstractRNG, SSA}
+const ClockSystem=AbsClockSystem{Symbol,Rule,Function,Incremental.IncrementalSum.IncSumHomSet,ClockKeyType, AbstractRNG, SSA}
 
 rng(c::ClockSystem) = only(c[:rng])
 sampl(c::ClockSystem) = only(c[:sampler])

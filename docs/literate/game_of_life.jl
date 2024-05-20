@@ -3,6 +3,7 @@
 # First we want to load our package with `using`
 
 using AlgebraicABMs, Catlab, AlgebraicRewriting
+ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # turn on @debug messages for this package
 
 # ## Schema 
 # 
@@ -14,9 +15,10 @@ using AlgebraicABMs, Catlab, AlgebraicRewriting
   live::Hom(Life,V)
 end
 
+# Create a datatype, 
 @acset_type LifeState(SchLifeGraph) <: AbstractSymmetricGraph;
 
-to_graphviz(SchLifeGraph)
+to_graphviz(SchLifeGraph) # visualize the schema
 
 # We extend our schema with coordinate information - this doesn't affect the 
 # game logic, so we  write our rules in the language of `Life` and only migrate 
@@ -31,12 +33,12 @@ end
 
 to_graphviz(SchLifeCoords)
 
-# Create a regular grid with periodic boundary conditions with an initial state
+# Create a regular grid with empty boundary conditions with an initial state
 function make_grid(curr::AbstractMatrix)
   n, m = size(curr)
   n == m || error("Must be square")
   X, coords = LifeStateCoords(), Dict()
-  for i in 1:n, j in 1:n
+  for j in 1:n, i in 1:n
     coords[i=>j] = add_vertex!(X; coords=(i, j))
     Bool(curr[i, j]) && add_part!(X, :Life, live=coords[i=>j])
   end
@@ -49,7 +51,7 @@ function make_grid(curr::AbstractMatrix)
   return X
 end;
 
-# Create a random game state on a square, periodic grid
+# Create a random game state on a square grid
 make_grid(n::Int, random=true) = 
   make_grid((random ? rand : zeros)(Bool, (n, n)));
 
@@ -88,11 +90,16 @@ is to assign "variables" for the values of the coordinates).
 idₒ = Dict(x => x for x in Symbol.(generators(SchLifeGraph, :Ob)))
 idₘ = Dict(x => x for x in Symbol.(generators(SchLifeGraph, :Hom)))
 AddCoords = Migrate′(idₒ, idₘ, SchLifeGraph, LifeState, SchLifeCoords, LifeStateCoords; delta=false);
-RemCoords = DeltaMigration(FinFunctor(idₒ, idₘ, SchLifeGraph, SchLifeCoords))
+RemCoords = DeltaMigration(FinFunctor(idₒ, idₘ, SchLifeGraph, SchLifeCoords));
 # ## Helper constants and functions 
 const DeadCell = LifeState(1) # a single dead cell
 const LiveCell = @acset LifeState begin V=1; Life=1; live=1 end # a single living cell
 const to_life = homomorphism(DeadCell, LiveCell)  # the unique map Dead → Live
+
+PAC(m) = AppCond(m; monic=true) # Positive Application condition
+NAC(m) = AppCond(m, false; monic=true) # Negative Application condition
+TickRule(args...; kw...) = # Rule which fires on 1.0, 2.0, ...
+  ABMRule(Rule(args...; kw...), DiscreteHazard(1); schema=SchLifeGraph);
 
 """Create a context of n living neighbors for either a dead or alive cell"""
 function living_neighbors(n::Int; alive=true)::ACSetTransformation
@@ -106,34 +113,85 @@ function living_neighbors(n::Int; alive=true)::ACSetTransformation
   homomorphism(alive ? LiveCell : DeadCell, X; initial=(V=[1],))
 end;
 
-PAC(m) = AppCond(m; monic=true) # Positive Application condition
-NAC(m) = AppCond(m, false; monic=true) # Negative Application condition
-TickRule(args...; kw...) = # Rule which fires on 1.0, 2.0, ...
-  ABMRule(Rule(args...; kw...), DiscreteHazard(1); schema=SchLifeGraph);
+view_life(codom(living_neighbors(3; alive=false)))
 
 # ## Create model by defining update rules
+
+# A cell dies due to underpopulation if it has < 2 living neighbors
+underpop = TickRule(to_life, id(DeadCell); ac=[NAC(living_neighbors(2))]);
+
+# A cell dies due to overpopulation if it has > 3 living neighbors
+overpop = TickRule(to_life, id(DeadCell); ac=[PAC(living_neighbors(4))])
 
 # A cell is born iff it has three living neighbors
 birth = TickRule(id(DeadCell), to_life; 
                  ac=[PAC(living_neighbors(3; alive=false)),
                      NAC(living_neighbors(4; alive=false)),
-                     NAC(to_life)]);
+                     NAC(to_life)]); # this rule does not apply if cell is alive
 
-# A cell is born iff it has ≥ 2 living neighbors but < 4 living neighbors
-death = TickRule(to_life, id(DeadCell); 
-                 ac=[PAC(living_neighbors(2)), 
-                     NAC(living_neighbors(4))]);
- 
-GoL = ABM([birth, death]);
-
+GoL = ABM([underpop, overpop, birth]);  # ABM is constituted by its transition rules
+GoL_coords = AddCoords(GoL); # migrate ABM into schema with coordinates
 
 # Create an initial state
-G = make_grid([1 0 1 0 1; 
-               0 1 0 1 0; 
-               0 1 0 1 0; 
+G = make_grid([1 0 1 0 1;
+               0 0 1 0 0;
+               0 1 1 1 0;
                1 0 1 0 1;
                1 0 1 0 1])
-view_life(G);
-G = make_grid(ones(1,1))
-# Run the model
-res = run!(AddCoords(GoL), G; maxevent=2);
+view_life(G)
+
+# Let's check that our rules work the appropriate way
+#
+# There are 12 dead cells and 13 live ones. 
+
+match_coords(f::ACSetTransformation) =  G[f[:V](1), :coords]
+match_coords(rule::Rule) = match_coords.(get_matches(AddCoords(rule), G))
+
+match_coords.(homomorphisms(LiveCell|>AddCoords, G))
+
+# Let's calculate how many matches we
+# have for the rule which determines which cells die from underpopulation: 
+match_coords(underpop)
+
+# This is right, the corners have zero living neighbors and the bottom middle 
+# cell only has one.
+# 
+# Now, let's calculate how many matches we
+# have for the rule which determines which cells die from overpopulation: 
+
+match_coords(overpop)
+
+# Those are the coordinates of the living cells that will die in the next step. Below are the coordinates of the 6 dead cells that will come to life:
+
+match_coords(birth)
+
+# 
+
+
+res = run!(GoL_coords, G; maxevent=9);
+
+imgs = view(res, view_life)
+
+# We can see our starting point 
+
+imgs[1]
+
+# The next step 
+
+imgs[2]
+
+# The next step 
+
+imgs[3]
+
+# 
+
+imgs[4]
+
+# 
+
+imgs[5]
+
+# 
+
+imgs[6]

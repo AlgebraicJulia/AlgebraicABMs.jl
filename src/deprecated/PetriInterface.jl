@@ -7,7 +7,7 @@ export PetriNetCSet
 using AlgebraicRewriting, Catlab, AlgebraicPetri
 using Fleck
 using Random
-import AlgebraicRewriting.Incremental: IncSumHomSet
+import AlgebraicRewriting.Incremental.IncrementalSum: IncSumHomSet
 
 using ..RewriteSemiMarkov: ClockSystem, ClockKeyType, sampl, rng
 import ..RewriteSemiMarkov: run!

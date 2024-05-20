@@ -31,3 +31,5 @@ Manifest.toml
 cache/
 
 figures/SIRSDiscretetrajectory.png
+
+traj/

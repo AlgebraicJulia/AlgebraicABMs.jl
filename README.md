@@ -5,7 +5,7 @@
 [![Code Coverage](https://codecov.io/gh/AlgebraicJulia/AlgebraicABMs.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/AlgebraicJulia/AlgebraicABMs.jl)
 [![CI/CD](https://github.com/AlgebraicJulia/AlgebraicABMs.jl/actions/workflows/julia_ci.yml/badge.svg)](https://github.com/AlgebraicJulia/AlgebraicABMs.jl/actions/workflows/julia_ci.yml)
 
-Important example files: `docs/literate/petri_example.jl` and `test/ABMs.jl`
+Important example files: `docs/literate/game_of_life.jl` and `test/ABMs.jl`
 
 ## Caveats
 

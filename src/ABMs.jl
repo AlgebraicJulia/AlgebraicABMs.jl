@@ -10,11 +10,10 @@ using StructEquality
 
 using Catlab, AlgebraicRewriting
 using AlgebraicPetri: AbstractReactionNet
-using AlgebraicRewriting.Incremental: connected_acset_components
+using AlgebraicRewriting.Incremental.Algorithms: connected_acset_components
 using AlgebraicRewriting.Rewrite.Utils: get_pmap, get_rmap, get_expr_binding_map
 import Catlab: right
-import AlgebraicRewriting: get_match, ruletype
-import AlgebraicRewriting.Incremental: addition!, deletion!
+import AlgebraicRewriting: get_match, ruletype, addition!, deletion!, get_matches
 
 using ..Upstream: Migrate′, repr_dict
 import ..Upstream: pattern
@@ -202,6 +201,9 @@ right(r::ABMRule) = right(getrule(r))
 
 ruletype(r::ABMRule) = ruletype(getrule(r))
 
+get_matches(r::ABMRule, args...; kw...) = 
+  get_matches(getrule(r), args...; kw...)
+
 (F::Migrate′)(r::ABMRule) = 
   ABMRule(F.F(r.rule), r.timer; schema=F.F.delta ? F.dom : F.codom)
 
@@ -230,8 +232,9 @@ end
 
 const Maybe{T} = Union{Nothing, T}
 
-const KeyType = Union{Pair{Int, Int}}                  # connected comp. homset
-                      Tuple{Int,Vector{Pair{Int,Int}}} # multi-component homset
+# Accessing an IncHomSet
+const KeyType = Union{Pair{Int, Int}}       # connected comp. homset
+                      Vector{Pair{Int,Int}} # multi-component homset
 
 """
 An agent-based model.
@@ -251,7 +254,7 @@ abstract type AbsHomSet end
 
 @struct_hash_equal struct EmptyHomSet <: AbsHomSet end
 
-@struct_hash_equal struct DiscreteHomSet <: AbsHomSet end
+@struct_hash_equal struct RepresentableHomSet <: AbsHomSet end
 
 @struct_hash_equal struct ExplicitHomSet <: AbsHomSet val::IncHomSet end
 
@@ -263,7 +266,7 @@ Base.pairs(h::ExplicitHomSet) = pairs(h.val)
 
 Base.getindex(h::ExplicitHomSet, i) = h.val[i]
 
-deletion!(h::ExplicitHomSet, m) =  deletion!(h.val, m)
+deletion!(h::ExplicitHomSet, m; kw...) =  deletion!(h.val, m; kw...)
 
 addition!(h::ExplicitHomSet, k, r, u) = addition!(h.val, k, r, u)
 
@@ -271,14 +274,16 @@ addition!(h::ExplicitHomSet, k, r, u) = addition!(h.val, k, r, u)
 function init_homset(rule::ABMRule, state::ACSet, additions::Vector{<:ACSetTransformation})
   p, sd = pattern_type(rule), state_dep(rule.timer)
   p == EmptyP() && return EmptyHomSet()
-  (sd || p == RegularP()) && return ExplicitHomSet(IncHomSet(pattern(rule), additions, state))
+  (sd || p == RegularP()  
+   ) && return ExplicitHomSet(IncHomSet(getrule(rule), state,  additions))
   @assert p isa RepresentableP  "$(typeof(p))"
-  return DiscreteHomSet()
+  return RepresentableHomSet()
 end 
 
 const default_sampler = FirstToFire{
   Union{Pair{Int, Nothing},   # non-explicit homset
-        Pair{Int, KeyType}},  # explicit homset
+        Pair{Int, Pair{Int,Int}}, # explicit single cc homset
+        Pair{Int, Vector{Pair{Int,Int}}}},  # explicit mc homset
   Float64}
 
 """
@@ -327,7 +332,7 @@ TODO incorporate the number of possibilities as a multiplier for the rate
 """
 get_match(::EmptyP, L::ACSet, G::ACSet, ::EmptyHomSet, ::Nothing) = create(G)
 
-function get_match(P::RepresentableP, L::T, G::ACSet, ::DiscreteHomSet, 
+function get_match(P::RepresentableP, L::T, G::ACSet, ::RepresentableHomSet, 
                    ::Nothing) where T<:ACSet
   initial = Dict(map(collect(pairs(P.parts))) do (o, idxs) 
     o => Dict(idx => rand(parts(G, o)) for idx in idxs)
@@ -351,7 +356,7 @@ Traj(x::ACSet) = Traj(x, Pair{Float64, Any}[], Span{ACSet}[])
 function Base.push!(t::Traj, τ::Float64,rule::Int, v::Any, sp::Span{<:ACSet}) 
   push!(t.events, (τ, rule, v))
   isempty(t.hist) || codom(left(sp)) == codom(right(last(t.hist))) || error(
-    "Bad history \n$(codom(left(sp))) \n!= \n$(right(last(t.hist)))"
+    "Bad history \n$(codom(left(sp))) \n!= \n$(codom(right(last(t.hist))))"
   )
   push!(t.hist, sp)
 end
@@ -365,13 +370,13 @@ const MAXEVENT = 100
 """
 Run an ABM, creating a fresh runtime + trajectory.
 """
-function run!(abm::ABM, init::T; save=deepcopy, maxevent=MAXEVENT, maxtime=Inf, 
-              kw...) where T<:ACSet 
+function run!(abm::ABM, init::T; save=_->nothing, maxevent=MAXEVENT, 
+              maxtime=Inf, kw...) where T<:ACSet 
   run!(abm::ABM, RuntimeABM(abm, init; kw...), Traj(init); save, maxtime, maxevent)
 end
 
 function run!(abm::ABM, rt::RuntimeABM, output::Traj;
-              save=deepcopy, maxevent=MAXEVENT, maxtime=Inf)
+              save=_->nothing, maxevent=MAXEVENT, maxtime=Inf)
 
   # Helper functions that automatically incorporate the runtime `rt`
   log!(rule::Int, sp::Span) = push!(output, rt.tnow, rule, save(rt.state), sp)
@@ -392,17 +397,17 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
     # Get next event + unpack data
     event::Int, key::Maybe{KeyType} = next(rt) # updates the clock time
     rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
-    rule_type::Symbol = ruletype(rule) # DPO, SPO, etc.
+    rule′::Rule, rule_type::Symbol = getrule(rule), ruletype(rule)
 
     @debug "$(length(output)): event $event fired @ $(rt.tnow)"
-    show(stdout,"text/plain", rt.state)
     # If RegularPattern, we have an explicit match, otherwise randomly pick one
     m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
+    dpo = rule_type == :DPO ? (left(rule′), m) : nothing
 
     # Excute rewrite rule and unpack results
-    rw_result = (rule_type, rewrite_match_maps(getrule(rule), m))
+    rw_result = (rule_type, rewrite_match_maps(rule′, m))
     rmap_ = get_rmap(rw_result...)
-    xmap = get_expr_binding_map(getrule(rule), m, rw_result[2])
+    xmap = get_expr_binding_map(rule′, m, rw_result[2])
     (lft, rght_) = get_pmap(rw_result...)
     rmap, rght = compose.([rmap_,rght_], Ref(xmap))
     pmap = Span(lft, rght)
@@ -415,18 +420,24 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
       if pt == EmptyP()
         i == event && enable!′(create(rt.state), i)
       elseif pt == RegularP() # update explicit hom-set w/r/t span Xₙ ↩ • -> Xₙ₊₁
-        for d in deletion!(clocksᵢ, lft)
-          # disable clocks which are invalidated
-          # note that (event,key) is already diabled
-          (i,d)==(event,key) || disable!′(i => d) 
+
+        del_invalid, del_new = deletion!(clocksᵢ, lft; dpo)
+        for d in del_invalid # disable clocks which are invalidated
+          (i,d)==(event,key) || disable!′(i => d) # (event,key) already diabled
         end
-        for a in addition!(clocksᵢ, event, rmap, rght) # rght: R → Xₙ₊₁
-          enable!′(clocksᵢ[a], i, a)
+        for a in del_new; enable!′(clocksᵢ[a], i, a) end
+
+        add_invalid, add_new = addition!(clocksᵢ, event, rmap, rght) # rght: R → Xₙ₊₁
+        for d in add_invalid # disable clocks which are invalidated
+          (i,d)==(event,key) || disable!′(i => d) # (event,key) already diabled
         end
+        for a in add_new; enable!′(clocksᵢ[a], i, a) end
+
         # If the match that just fired is still preserved
         if i == event && haskey(clocksᵢ, key)
           enable!′(clocksᵢ[key], i, key)
         end
+
       elseif pt isa RepresentableP
         relevant_obs = keys(pt)
         # we need to update current timer if # of parts has changed

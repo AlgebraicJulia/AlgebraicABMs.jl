@@ -145,7 +145,7 @@ view_life(G)
 # There are 12 dead cells and 13 live ones. 
 
 match_coords(f::ACSetTransformation) =  G[f[:V](1), :coords]
-match_coords(rule::Rule) = match_coords.(get_matches(AddCoords(rule), G))
+match_coords(rule::ABMRule) = match_coords.(get_matches(AddCoords(rule), G))
 
 match_coords.(homomorphisms(LiveCell|>AddCoords, G))
 
@@ -161,11 +161,11 @@ match_coords(underpop)
 
 match_coords(overpop)
 
-# Those are the coordinates of the living cells that will die in the next step. Below are the coordinates of the 6 dead cells that will come to life:
+# Below are the coordinates of the 2 dead cells that will come to life:
 
 match_coords(birth)
 
-# 
+# Run the ABM
 
 
 res = run!(GoL_coords, G; maxevent=9);

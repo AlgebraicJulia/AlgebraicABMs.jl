@@ -254,7 +254,7 @@ abstract type AbsHomSet end
 
 @struct_hash_equal struct EmptyHomSet <: AbsHomSet end
 
-@struct_hash_equal struct DiscreteHomSet <: AbsHomSet end
+@struct_hash_equal struct RepresentableHomSet <: AbsHomSet end
 
 @struct_hash_equal struct ExplicitHomSet <: AbsHomSet val::IncHomSet end
 
@@ -277,7 +277,7 @@ function init_homset(rule::ABMRule, state::ACSet, additions::Vector{<:ACSetTrans
   (sd || p == RegularP()  
    ) && return ExplicitHomSet(IncHomSet(getrule(rule), state,  additions))
   @assert p isa RepresentableP  "$(typeof(p))"
-  return DiscreteHomSet()
+  return RepresentableHomSet()
 end 
 
 const default_sampler = FirstToFire{
@@ -332,7 +332,7 @@ TODO incorporate the number of possibilities as a multiplier for the rate
 """
 get_match(::EmptyP, L::ACSet, G::ACSet, ::EmptyHomSet, ::Nothing) = create(G)
 
-function get_match(P::RepresentableP, L::T, G::ACSet, ::DiscreteHomSet, 
+function get_match(P::RepresentableP, L::T, G::ACSet, ::RepresentableHomSet, 
                    ::Nothing) where T<:ACSet
   initial = Dict(map(collect(pairs(P.parts))) do (o, idxs) 
     o => Dict(idx => rand(parts(G, o)) for idx in idxs)

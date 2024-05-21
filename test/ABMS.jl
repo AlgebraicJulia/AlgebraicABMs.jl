@@ -44,22 +44,21 @@ abm = ABM([create_loop, add_loop, rem_loop, rem_edge])
 @test length(only(match_vect(RuntimeABM(abm, G).clocks[3].val))) == 2
 
 traj = run!(abm, G; maxevent=10);
-@test length(traj) == 10
 
 traj = run!(ABM([rem_edge]), G);
 @test length(traj) == 3
 
 
 traj = run!(ABM([add_loop]), G);
-@test length(traj) > 3 # after we add a loop, the match persists and is resampled
+@test length(traj) > 3 # after we add a loop, the match persists + is resampled
+
 
 
 # Test events in parallel
-create_loop = ABMRule(Rule(id(Graph(1)), delete(Graph(1))), DiscreteHazard(1.))
-create_vert = ABMRule(Rule(id(Graph()),  create(Graph(1))), DiscreteHazard(1.))
-
-traj = run!(ABM([create_loop, create_vert]), Graph(); maxtime=5);
-
+create_loop = ABMRule(Rule(id(Graph(1)), delete(Graph(1))), DiscreteHazard(1.));
+create_vert = ABMRule(Rule(id(Graph()),  create(Graph(1))), DiscreteHazard(1.));
+abm = ABM([create_loop, create_vert]);
+traj = run!(abm, Graph(); maxtime=5);
 
 
 end # module

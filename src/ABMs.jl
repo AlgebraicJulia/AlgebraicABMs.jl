@@ -10,13 +10,13 @@ using StructEquality
 
 using Catlab, AlgebraicRewriting
 using AlgebraicPetri: AbstractReactionNet
-using AlgebraicRewriting.Incremental.Algorithms: connected_acset_components
+using AlgebraicRewriting.Incremental.Algorithms: connected_acset_components, pull_back
 using AlgebraicRewriting.Rewrite.Utils: get_pmap, get_rmap, get_expr_binding_map
 import Catlab: right
 import AlgebraicRewriting: get_match, ruletype, addition!, deletion!, get_matches
 
 using ..Upstream: Migrate′, repr_dict
-import ..Upstream: pattern
+import ..Upstream: pattern, pops!
 
 # Timers
 ########
@@ -261,6 +261,8 @@ abstract type AbsHomSet end
 Base.keys(h::ExplicitHomSet) = keys(h.val)
 
 Base.haskey(h::ExplicitHomSet, k::KeyType) = haskey(h.val, k)
+Base.haskey(::EmptyHomSet, k) = false
+Base.haskey(::RepresentableHomSet, k) = false
 
 Base.pairs(h::ExplicitHomSet) = pairs(h.val)
 
@@ -317,10 +319,20 @@ Base.haskey(rt::RuntimeABM, k::Pair) = haskey(rt.sampler.transition_entry, k)
 Base.haskey(rt::RuntimeABM, k::Int) = 
   haskey(rt.sampler.transition_entry, k => nothing)
 
+"""
+Check that RuntimeABM incremental hom sets have all valid homs.
+"""
+function validate(rt::RuntimeABM)
+  for c in filter(c -> c isa IncHomSet, rt.clocks)
+    c.state == rt.state || error("State mismatch")
+    validate(c)
+  end
+end
+
 """Pop the next random event, advance the clock"""
-function Fleck.next(rt::RuntimeABM)
+function pops!(rt::RuntimeABM)::Vector{Pair{Int, Maybe{KeyType}}}
   rt.nevent += 1
-  (rt.tnow, which) = pop!(rt.sampler, rt.rng, rt.tnow)
+  (rt.tnow, which) = pops!(rt.sampler, rt.rng, rt.tnow)
   return which
 end
 
@@ -372,7 +384,8 @@ Run an ABM, creating a fresh runtime + trajectory.
 """
 function run!(abm::ABM, init::T; save=_->nothing, maxevent=MAXEVENT, 
               maxtime=Inf, kw...) where T<:ACSet 
-  run!(abm::ABM, RuntimeABM(abm, init; kw...), Traj(init); save, maxtime, maxevent)
+  run!(abm::ABM, RuntimeABM(abm, init; kw...), Traj(init); 
+       save, maxtime, maxevent)
 end
 
 function run!(abm::ABM, rt::RuntimeABM, output::Traj;
@@ -389,61 +402,80 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
 
   # Main loop
   while rt.nevent < maxevent && rt.tnow < maxtime
+    # validate(rt) # TODO make this optional
     if length(rt.sampler) == 0 
       @info "Stochastic scheduling algorithm ran out of events"
       return output
     end
 
     # Get next event + unpack data
-    event::Int, key::Maybe{KeyType} = next(rt) # updates the clock time
-    rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
-    rule′::Rule, rule_type::Symbol = getrule(rule), ruletype(rule)
+    events::Vector{Pair{Int,Maybe{KeyType}}} = pops!(rt) # updates the clock time
+    N = length(rt.sampler)
 
-    @debug "$(length(output)): event $event fired @ $(rt.tnow)"
-    # If RegularPattern, we have an explicit match, otherwise randomly pick one
-    m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
-    dpo = rule_type == :DPO ? (left(rule′), m) : nothing
+    s = length(events) > 1 ? "s" : ""
+    @debug "$(length(output)): Event$s $(first.(events)) fired @ t=$(rt.tnow) ($N queued)"
 
-    # Excute rewrite rule and unpack results
-    rw_result = (rule_type, rewrite_match_maps(rule′, m))
-    rmap_ = get_rmap(rw_result...)
-    xmap = get_expr_binding_map(rule′, m, rw_result[2])
-    (lft, rght_) = get_pmap(rw_result...)
-    rmap, rght = compose.([rmap_,rght_], Ref(xmap))
-    pmap = Span(lft, rght)
-    rt.state = codom(rmap) # update runtime state
-    log!(event, pmap)      # record event result
+    # TODO some sort of check that the events are consistent with each other
+    # or a randomization of their order
+
+    update_data = [] # use to update incremental hom sets afterwards
+    # execute all the events
+    for (event, key) in events
+      rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
+      rule′::Rule, rule_type::Symbol = getrule(rule), ruletype(rule)
+      # If RegularPattern, we have an explicit match, otherwise randomly pick one
+      m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
+      # bring the match 'up to speed' given the previous (simultanous) updates
+      for (l, r) in first.(update_data)
+        m = pull_back(l, m) ⋅ r
+      end
+      dpo = rule_type == :DPO ? (left(rule′), m) : nothing
+
+      # Excute rewrite rule and unpack results
+      rw_result = (rule_type, rewrite_match_maps(rule′, m))
+      rmap_ = get_rmap(rw_result...)
+      xmap = get_expr_binding_map(rule′, m, rw_result[2])
+      (lft, rght_) = get_pmap(rw_result...)
+      rmap, rght = compose.([rmap_,rght_], Ref(xmap))
+      pmap = Span(lft, rght)
+      rt.state = codom(rmap) # update runtime state
+      log!(event, pmap)      # record event result
+      push!(update_data, (pmap, rmap, dpo, event))
+    end
 
     # All other rules can potentially update in response to the current event
     for (i, (ruleᵢ, clocksᵢ)) in enumerate(zip(abm.rules, rt.clocks))
       pt = pattern_type(ruleᵢ)
-      if pt == EmptyP()
-        i == event && enable!′(create(rt.state), i)
+      if pt == EmptyP() && i ∈ first.(events)
+        enable!′(create(rt.state), i)
       elseif pt == RegularP() # update explicit hom-set w/r/t span Xₙ ↩ • -> Xₙ₊₁
+        for ((lft, rght), rmap, dpo, fired_event) in update_data
+          del_invalid, del_new = deletion!(clocksᵢ, lft; dpo)
 
-        del_invalid, del_new = deletion!(clocksᵢ, lft; dpo)
-        for d in del_invalid # disable clocks which are invalidated
-          (i,d)==(event,key) || disable!′(i => d) # (event,key) already diabled
+          for d in del_invalid # disable clocks which are invalidated
+            (i=>d) ∈ events || disable!′(i => d) # (event,key) already diabled
+          end
+
+          for a in del_new
+            enable!′(clocksᵢ[a], i, a) 
+          end
+          # TODO change IncCCHomSet to be indexed by I↣R rather than ints
+          add_invalid, add_new = addition!(clocksᵢ, fired_event, rmap, rght)
+
+          for d in add_invalid # disable clocks which are invalidated
+            (i=>d) ∈ (events) || disable!′(i => d) # (event,key) already diabled
+          end
+          for a in add_new
+            enable!′(clocksᵢ[a], i, a) 
+          end
         end
-        for a in del_new; enable!′(clocksᵢ[a], i, a) end
-
-        add_invalid, add_new = addition!(clocksᵢ, event, rmap, rght) # rght: R → Xₙ₊₁
-        for d in add_invalid # disable clocks which are invalidated
-          (i,d)==(event,key) || disable!′(i => d) # (event,key) already diabled
-        end
-        for a in add_new; enable!′(clocksᵢ[a], i, a) end
-
-        # If the match that just fired is still preserved
-        if i == event && haskey(clocksᵢ, key)
-          enable!′(clocksᵢ[key], i, key)
-        end
-
       elseif pt isa RepresentableP
         relevant_obs = keys(pt)
+        Xs = left(first(first(update_data))), right(first(last(update_data)))
         # we need to update current timer if # of parts has changed
-        if i == event && all(>(0), nparts.(Ref(rt.state), relevant_obs))
+        if i ∈ first.(events) && all(>(0), nparts.(Ref(rt.state), relevant_obs))
           enable!′(create(rt.state), i)
-        elseif !all(ob -> allequal(nparts.(codom.(pmap), Ref(ob))), relevant_obs)
+        elseif !all(ob -> allequal(nparts.(codom.(Xs), ob)), relevant_obs)
           currently_enabled = haskey(rt, i)
           currently_enabled && disable!′(i) # Disable if active
           # enable new timer if possible to apply rule
@@ -453,9 +485,14 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
         end
       end
     end
+    # If any of the matches that were fired are still preserved, re-enable
+    for (event, key) in events
+      if haskey(rt.clocks[event], key)
+        enable!′(rt.clocks[event][key], event, key)
+      end
+    end
   end
   return output
 end
-
 
 end # module

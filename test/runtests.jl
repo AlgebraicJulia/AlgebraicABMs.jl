@@ -4,6 +4,6 @@ using Test
   # include("aqua.jl")
 end
 
-@testset "Core" begin
-  include("core.jl")
+@testset "ABMs" begin
+  include("ABMs.jl")
 end

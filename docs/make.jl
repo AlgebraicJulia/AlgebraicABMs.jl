@@ -47,14 +47,14 @@ end
 @info "Building Documenter.jl docs"
 makedocs(
   modules=[AlgebraicABMs],
-  format=Documenter.HTML(),
+  format=Documenter.HTML(size_threshold=typemax(Int)),
   sitename="AlgebraicABMs.jl",
   doctest=false,
   checkdocs=:none,
   pages=Any[
     "AlgebraicABMs.jl"=>"index.md",
     "Examples"=>Any[
-      #"generated/petri_example.md",
+      "generated/sir_petri.md",
       "generated/game_of_life.md",
     ],
     "Library Reference"=>"api.md",

@@ -7,3 +7,7 @@ end
 @testset "ABMs" begin
   include("ABMs.jl")
 end
+
+@testset "PetriInterface" begin
+  include("PetriInterface.jl")
+end

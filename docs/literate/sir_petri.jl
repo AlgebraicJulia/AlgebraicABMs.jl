@@ -1,18 +1,12 @@
-module TestPetriInterface 
+# # Petri-net based ABMs
+# 
+# First we want to load our packages with `using
 
-using Test
 using AlgebraicABMs, Catlab
-using AlgebraicABMs.ABMs: RepresentableP, RegularP
-n = length(methods(ABM))
-using AlgebraicPetri # check that package dependencies work
-@test length(methods(ABM)) == n+1
+using AlgebraicPetri
+using Distributions, Makie, CairoMakie
+ENV["JULIA_DEBUG"] = ""; # turn off @debug messages for this package
 
-using Distributions
-
-ENV["JULIA_DEBUG"] = "" # turn off @debug messages
-
-# ## Petri-net based model
-#
 # We define an SIRS model with birth and death
 
 sir_pn= @acset LabelledPetriNet begin
@@ -38,15 +32,12 @@ abm = ABM(sir_pn, (inf=ContinuousHazard(1 / β),
                    deathI=ContinuousHazard(1 / μ),
                    deathR=ContinuousHazard(1 / μ),
                    wane=ContinuousHazard(wane)));
-
-@test abm.rules[1].pattern_type isa RepresentableP
-@test abm.rules[2].pattern_type == RegularP()
-@test nparts.(Ref(codom(Catlab.left(abm.rules[1].rule))), [:S,:I,:R]) == [1,1,0] # S, I
-
 # Initial state
 init = PetriNetCSet(sir_pn; S=pS, I=pI)
 
 # Run the model
-res = run!(abm, init; maxtime=1000);
+res = run!(abm, init; maxtime=2000);
 
-end # module
+# Plot results
+Makie.plot(res; Dict(o=>X->nparts(X,o) for o in [:S,:I,:R])...)
+

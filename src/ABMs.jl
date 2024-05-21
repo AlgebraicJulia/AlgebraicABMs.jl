@@ -9,7 +9,6 @@ using DataStructures: DefaultDict
 using StructEquality
 
 using Catlab, AlgebraicRewriting
-using AlgebraicPetri: AbstractReactionNet
 using AlgebraicRewriting.Incremental.Algorithms: connected_acset_components, pull_back
 using AlgebraicRewriting.Rewrite.Utils: get_pmap, get_rmap, get_expr_binding_map
 import Catlab: right
@@ -73,18 +72,12 @@ DiscreteHazard(t::Number) = DiscreteHazard(Dirac(t))
 end
 
 """Check if a hazard rate is a simple exponential"""
+is_exp(::Distributions.Exponential) = true
 is_exp(h::ContinuousHazard) = h.val isa Distributions.Exponential
 is_exp(h::AbsHazard) = false
 
 ContinuousHazard(p::Number) = ContinuousHazard(Exponential(p))
 
-get_hazard(m::ACSetTransformation, t::Float64, h::FullClosure) = h(m, t)
-
-get_hazard(::ACSetTransformation, t::Float64, h::ClosureTime) = h(t)
-
-get_hazard(m::ACSetTransformation, ::Float64, h::ClosureState) = h(m)
-
-get_hazard(::ACSetTransformation, ::Float64, h::AbsHazard) = h.val
 
 # Rules 
 #######
@@ -133,6 +126,9 @@ end
 
 Base.keys(p::RepresentableP) = keys(p.parts)
 
+multiplier(p::RepresentableP, X::ACSet) =
+  prod(nparts(X, k)^length(v) for (k, v) in pairs(p.parts))
+
 """
 Analyze a pattern to find the most efficient pattern type for it.
 
@@ -180,6 +176,23 @@ function pattern_type(r::Rule, is_exp::Bool; schema=nothing)
   return RegularP() # no special case found
 end
 
+# Hazard rates depend on pattern type
+
+get_hazard(::PatternType, m::ACSetTransformation, t::Float64, h::FullClosure) = h(m, t)
+
+get_hazard(::PatternType, ::ACSetTransformation, t::Float64, h::ClosureTime) = h(t)
+
+get_hazard(::PatternType, m::ACSetTransformation, ::Float64, h::ClosureState) = h(m)
+
+get_hazard(::PatternType, ::ACSetTransformation, ::Float64, h::AbsHazard) = h.val
+
+function get_hazard(r::RepresentableP, f::ACSetTransformation, ::Float64, 
+                    h::ContinuousHazard) 
+   err = "Representable patterns must have simple exponential rules"
+   X = codom(f)
+   is_exp(h.val) ? Exponential(h.val.θ/multiplier(r,X)) : error(err)
+end
+
 """
 A stochastic rewrite rule with a dependent hazard rate
 """
@@ -212,11 +225,6 @@ A type which implements AbsDynamics must be able to compiled to an ODE for some
 set of variables.
 """
 abstract type AbsDynamics end 
-
-"""Use a Petri Net with rates"""
-@struct_hash_equal struct PetriDynamics <: AbsDynamics 
-  val::AbstractReactionNet
-end
 
 """Use a Stock Flow diagram (possibly this could be in a package extension)"""
 @struct_hash_equal struct StockFlowDynamics <: AbsDynamics 
@@ -261,7 +269,9 @@ abstract type AbsHomSet end
 Base.keys(h::ExplicitHomSet) = keys(h.val)
 
 Base.haskey(h::ExplicitHomSet, k::KeyType) = haskey(h.val, k)
+
 Base.haskey(::EmptyHomSet, k) = false
+
 Base.haskey(::RepresentableHomSet, k) = false
 
 Base.pairs(h::ExplicitHomSet) = pairs(h.val)
@@ -299,16 +309,26 @@ mutable struct RuntimeABM
   const sampler::SSA # stochastic simulation algorithm
   const rng::Distributions.AbstractRNG
   function RuntimeABM(abm::ABM, init::T; sampler=default_sampler) where T<:ACSet
+    # Create the runtime
     rt = new(init, init_homset.(abm.rules, Ref(init), Ref(additions(abm))), 
              0., 0, sampler(), Random.RandomDevice())
-    for (i, homset) in enumerate(rt.clocks)
-      kv = homset isa ExplicitHomSet ? pairs(homset) : [nothing => create(init)]
+    # Initialize the firing queue
+    for (i, (pat,homset)) in enumerate(zip(pattern_type.(abm.rules), rt.clocks))
+      kv = if homset isa ExplicitHomSet 
+        pairs(homset) 
+      else
+        if pat isa EmptyP || all(>(0), nparts.(Ref(init), keys(pat)))
+          [nothing => create(init)]
+        else 
+          []
+        end
+      end
       for (key, val) in kv
-        haz = get_hazard(val, 0., abm.rules[i].timer)
+        haz = get_hazard(pat, val, 0., abm.rules[i].timer)
         enable!(rt.sampler, i => key, haz, 0., 0., rt.rng)
       end
     end
-    rt
+    return rt
   end
 end
 
@@ -390,14 +410,15 @@ end
 
 function run!(abm::ABM, rt::RuntimeABM, output::Traj;
               save=_->nothing, maxevent=MAXEVENT, maxtime=Inf)
-
+  maxevent = isinf(maxtime) ? maxevent : typemax(Int)
   # Helper functions that automatically incorporate the runtime `rt`
   log!(rule::Int, sp::Span) = push!(output, rt.tnow, rule, save(rt.state), sp)
   disable!′(key::Pair) = disable!(rt.sampler, key, rt.tnow)
   disable!′(i::Int) = disable!′(i => nothing)
-  function enable!′(m::ACSetTransformation, rule::Int, key=nothing) 
-    haz = get_hazard(m, rt.tnow, abm.rules[rule].timer)
-    enable!(rt.sampler, rule => key, haz, rt.tnow, rt.tnow, rt.rng)
+  function enable!′(m::ACSetTransformation, rule_id::Int, key=nothing) 
+    rule = abm.rules[rule_id]
+    haz = get_hazard(pattern_type(rule), m, rt.tnow, rule.timer)
+    enable!(rt.sampler, rule_id => key, haz, rt.tnow, rt.tnow, rt.rng)
   end
 
   # Main loop

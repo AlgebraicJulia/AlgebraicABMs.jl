@@ -3,7 +3,6 @@
 ```@autodocs
 Modules = [
   AlgebraicABMs.Distributions,
-  AlgebraicABMs.PetriInterface,
-  AlgebraicABMs.RewriteSemiMarkov
+  AlgebraicABMs.ABMs,
 ]
 ```

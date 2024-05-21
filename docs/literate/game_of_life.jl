@@ -87,10 +87,7 @@ and obtain a state of the world with coordinates (the canonical way to do this
 is to assign "variables" for the values of the coordinates).
 =#
 
-idₒ = Dict(x => x for x in Symbol.(generators(SchLifeGraph, :Ob)))
-idₘ = Dict(x => x for x in Symbol.(generators(SchLifeGraph, :Hom)))
-AddCoords = Migrate′(idₒ, idₘ, SchLifeGraph, LifeState, SchLifeCoords, LifeStateCoords; delta=false);
-RemCoords = DeltaMigration(FinFunctor(idₒ, idₘ, SchLifeGraph, SchLifeCoords));
+AddCoords = Migrate(SchLifeGraph, LifeState, SchLifeCoords, LifeStateCoords; delta=false);
 # ## Helper constants and functions 
 const DeadCell = LifeState(1) # a single dead cell
 const LiveCell = @acset LifeState begin V=1; Life=1; live=1 end # a single living cell

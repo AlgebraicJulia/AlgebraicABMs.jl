@@ -10,11 +10,11 @@ using StructEquality
 
 using Catlab, AlgebraicRewriting
 using AlgebraicRewriting.Incremental.Algorithms: connected_acset_components, pull_back
+using AlgebraicRewriting.Rewrite.Migration: repr_dict
 using AlgebraicRewriting.Rewrite.Utils: get_pmap, get_rmap, get_expr_binding_map
 import Catlab: right
 import AlgebraicRewriting: get_match, ruletype, addition!, deletion!, get_matches
 
-using ..Upstream: Migrate′, repr_dict
 import ..Upstream: pattern, pops!
 
 # Timers
@@ -150,7 +150,7 @@ function pattern_type(r::Rule, is_exp::Bool; schema=nothing)
   # Determine if pattern is a coproduct of representables
   if is_exp
     repr_loc = DefaultDict{Symbol, Vector{Int}}(() -> Int[])
-    reprs = repr_dict(typeof(p), S)
+    reprs = repr_dict(typeof(p), Presentation(S))
     ccs, iso′ = connected_acset_components(p)
     iso = invert_iso(iso′)
     for cc_leg in legs(ccs)
@@ -226,8 +226,8 @@ ruletype(r::ABMRule) = ruletype(getrule(r))
 get_matches(r::ABMRule, args...; kw...) = 
   get_matches(getrule(r), args...; kw...)
 
-(F::Migrate′)(r::ABMRule) = 
-  ABMRule(F.F(r.rule), r.timer; name=r.name, schema=F.F.delta ? F.dom : F.codom)
+(F::Migrate)(r::ABMRule) = 
+  ABMRule(F(r.rule), r.timer; name=r.name, schema=F.delta ? F.P1 : F.P2)
 
 """
 A type which implements AbsDynamics must be able to compiled to an ODE for some 
@@ -265,7 +265,7 @@ end
 
 additions(abm::ABM) = right.(abm.rules)
 
-(F::Migrate′)(abm::ABM) = ABM(F.(abm.rules), abm.dyn)
+(F::Migrate)(abm::ABM) = ABM(F.(abm.rules), abm.dyn)
 
 Base.getindex(abm::ABM, i::Int) = abm.rules[i]
 Base.getindex(abm::ABM, n::Symbol) = abm.rules[abm.names[n]]
@@ -378,8 +378,6 @@ end
 
 """
 Get match returns a randomly chosen morphism for the aggregate rule
-
-TODO incorporate the number of possibilities as a multiplier for the rate
 """
 get_match(::EmptyP, L::ACSet, G::ACSet, ::EmptyHomSet, ::Nothing) = create(G)
 
@@ -442,7 +440,6 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
 
   # Main loop
   while rt.nevent < maxevent && rt.tnow < maxtime
-    # validate(rt) # TODO make this optional
     if length(rt.sampler) == 0 
       @info "Stochastic scheduling algorithm ran out of events"
       return output
@@ -482,7 +479,7 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
       pmap = Span(lft, rght)
       rt.state = codom(rmap) # update runtime state
       log!(event, pmap)      # record event result
-      push!(update_data, (pmap, rmap, dpo, event))
+      push!(update_data, (pmap, rmap, dpo, right(rule′)))
     end
 
     # All other rules can potentially update in response to the current event
@@ -491,7 +488,7 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
       if pt == EmptyP() && i ∈ first.(events)
         enable!′(create(rt.state), i)
       elseif pt == RegularP() # update explicit hom-set w/r/t span Xₙ ↩ • -> Xₙ₊₁
-        for ((lft, rght), rmap, dpo, fired_event) in update_data
+        for ((lft, rght), rmap, dpo, rule_right) in update_data
           del_invalid, del_new = deletion!(clocksᵢ, lft; dpo)
 
           for d in del_invalid # disable clocks which are invalidated
@@ -502,7 +499,7 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
             enable!′(clocksᵢ[a], i, a) 
           end
           # TODO change IncCCHomSet to be indexed by I↣R rather than ints
-          add_invalid, add_new = addition!(clocksᵢ, fired_event, rmap, rght)
+          add_invalid, add_new = addition!(clocksᵢ, rule_right, rmap, rght)
 
           for d in add_invalid # disable clocks which are invalidated
             (i=>d) ∈ (events) || disable!′(i => d) # (event,key) already diabled

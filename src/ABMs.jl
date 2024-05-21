@@ -9,14 +9,13 @@ using DataStructures: DefaultDict
 using StructEquality
 
 using Catlab, AlgebraicRewriting
-using AlgebraicPetri: AbstractReactionNet
-using AlgebraicRewriting.Incremental.Algorithms: connected_acset_components
+using AlgebraicRewriting.Incremental.Algorithms: connected_acset_components, pull_back
 using AlgebraicRewriting.Rewrite.Utils: get_pmap, get_rmap, get_expr_binding_map
 import Catlab: right
 import AlgebraicRewriting: get_match, ruletype, addition!, deletion!, get_matches
 
 using ..Upstream: Migrate′, repr_dict
-import ..Upstream: pattern
+import ..Upstream: pattern, pops!
 
 # Timers
 ########
@@ -73,18 +72,12 @@ DiscreteHazard(t::Number) = DiscreteHazard(Dirac(t))
 end
 
 """Check if a hazard rate is a simple exponential"""
+is_exp(::Distributions.Exponential) = true
 is_exp(h::ContinuousHazard) = h.val isa Distributions.Exponential
 is_exp(h::AbsHazard) = false
 
 ContinuousHazard(p::Number) = ContinuousHazard(Exponential(p))
 
-get_hazard(m::ACSetTransformation, t::Float64, h::FullClosure) = h(m, t)
-
-get_hazard(::ACSetTransformation, t::Float64, h::ClosureTime) = h(t)
-
-get_hazard(m::ACSetTransformation, ::Float64, h::ClosureState) = h(m)
-
-get_hazard(::ACSetTransformation, ::Float64, h::AbsHazard) = h.val
 
 # Rules 
 #######
@@ -133,6 +126,9 @@ end
 
 Base.keys(p::RepresentableP) = keys(p.parts)
 
+multiplier(p::RepresentableP, X::ACSet) =
+  prod(nparts(X, k)^length(v) for (k, v) in pairs(p.parts))
+
 """
 Analyze a pattern to find the most efficient pattern type for it.
 
@@ -180,6 +176,23 @@ function pattern_type(r::Rule, is_exp::Bool; schema=nothing)
   return RegularP() # no special case found
 end
 
+# Hazard rates depend on pattern type
+
+get_hazard(::PatternType, m::ACSetTransformation, t::Float64, h::FullClosure) = h(m, t)
+
+get_hazard(::PatternType, ::ACSetTransformation, t::Float64, h::ClosureTime) = h(t)
+
+get_hazard(::PatternType, m::ACSetTransformation, ::Float64, h::ClosureState) = h(m)
+
+get_hazard(::PatternType, ::ACSetTransformation, ::Float64, h::AbsHazard) = h.val
+
+function get_hazard(r::RepresentableP, f::ACSetTransformation, ::Float64, 
+                    h::ContinuousHazard) 
+   err = "Representable patterns must have simple exponential rules"
+   X = codom(f)
+   is_exp(h.val) ? Exponential(h.val.θ/multiplier(r,X)) : error(err)
+end
+
 """
 A stochastic rewrite rule with a dependent hazard rate
 """
@@ -212,11 +225,6 @@ A type which implements AbsDynamics must be able to compiled to an ODE for some
 set of variables.
 """
 abstract type AbsDynamics end 
-
-"""Use a Petri Net with rates"""
-@struct_hash_equal struct PetriDynamics <: AbsDynamics 
-  val::AbstractReactionNet
-end
 
 """Use a Stock Flow diagram (possibly this could be in a package extension)"""
 @struct_hash_equal struct StockFlowDynamics <: AbsDynamics 
@@ -262,6 +270,10 @@ Base.keys(h::ExplicitHomSet) = keys(h.val)
 
 Base.haskey(h::ExplicitHomSet, k::KeyType) = haskey(h.val, k)
 
+Base.haskey(::EmptyHomSet, k) = false
+
+Base.haskey(::RepresentableHomSet, k) = false
+
 Base.pairs(h::ExplicitHomSet) = pairs(h.val)
 
 Base.getindex(h::ExplicitHomSet, i) = h.val[i]
@@ -297,16 +309,26 @@ mutable struct RuntimeABM
   const sampler::SSA # stochastic simulation algorithm
   const rng::Distributions.AbstractRNG
   function RuntimeABM(abm::ABM, init::T; sampler=default_sampler) where T<:ACSet
+    # Create the runtime
     rt = new(init, init_homset.(abm.rules, Ref(init), Ref(additions(abm))), 
              0., 0, sampler(), Random.RandomDevice())
-    for (i, homset) in enumerate(rt.clocks)
-      kv = homset isa ExplicitHomSet ? pairs(homset) : [nothing => create(init)]
+    # Initialize the firing queue
+    for (i, (pat,homset)) in enumerate(zip(pattern_type.(abm.rules), rt.clocks))
+      kv = if homset isa ExplicitHomSet 
+        pairs(homset) 
+      else
+        if pat isa EmptyP || all(>(0), nparts.(Ref(init), keys(pat)))
+          [nothing => create(init)]
+        else 
+          []
+        end
+      end
       for (key, val) in kv
-        haz = get_hazard(val, 0., abm.rules[i].timer)
+        haz = get_hazard(pat, val, 0., abm.rules[i].timer)
         enable!(rt.sampler, i => key, haz, 0., 0., rt.rng)
       end
     end
-    rt
+    return rt
   end
 end
 
@@ -317,10 +339,20 @@ Base.haskey(rt::RuntimeABM, k::Pair) = haskey(rt.sampler.transition_entry, k)
 Base.haskey(rt::RuntimeABM, k::Int) = 
   haskey(rt.sampler.transition_entry, k => nothing)
 
+"""
+Check that RuntimeABM incremental hom sets have all valid homs.
+"""
+function validate(rt::RuntimeABM)
+  for c in filter(c -> c isa IncHomSet, rt.clocks)
+    c.state == rt.state || error("State mismatch")
+    validate(c)
+  end
+end
+
 """Pop the next random event, advance the clock"""
-function Fleck.next(rt::RuntimeABM)
+function pops!(rt::RuntimeABM)::Vector{Pair{Int, Maybe{KeyType}}}
   rt.nevent += 1
-  (rt.tnow, which) = pop!(rt.sampler, rt.rng, rt.tnow)
+  (rt.tnow, which) = pops!(rt.sampler, rt.rng, rt.tnow)
   return which
 end
 
@@ -372,78 +404,99 @@ Run an ABM, creating a fresh runtime + trajectory.
 """
 function run!(abm::ABM, init::T; save=_->nothing, maxevent=MAXEVENT, 
               maxtime=Inf, kw...) where T<:ACSet 
-  run!(abm::ABM, RuntimeABM(abm, init; kw...), Traj(init); save, maxtime, maxevent)
+  run!(abm::ABM, RuntimeABM(abm, init; kw...), Traj(init); 
+       save, maxtime, maxevent)
 end
 
 function run!(abm::ABM, rt::RuntimeABM, output::Traj;
               save=_->nothing, maxevent=MAXEVENT, maxtime=Inf)
-
+  maxevent = isinf(maxtime) ? maxevent : typemax(Int)
   # Helper functions that automatically incorporate the runtime `rt`
   log!(rule::Int, sp::Span) = push!(output, rt.tnow, rule, save(rt.state), sp)
   disable!′(key::Pair) = disable!(rt.sampler, key, rt.tnow)
   disable!′(i::Int) = disable!′(i => nothing)
-  function enable!′(m::ACSetTransformation, rule::Int, key=nothing) 
-    haz = get_hazard(m, rt.tnow, abm.rules[rule].timer)
-    enable!(rt.sampler, rule => key, haz, rt.tnow, rt.tnow, rt.rng)
+  function enable!′(m::ACSetTransformation, rule_id::Int, key=nothing) 
+    rule = abm.rules[rule_id]
+    haz = get_hazard(pattern_type(rule), m, rt.tnow, rule.timer)
+    enable!(rt.sampler, rule_id => key, haz, rt.tnow, rt.tnow, rt.rng)
   end
 
   # Main loop
   while rt.nevent < maxevent && rt.tnow < maxtime
+    # validate(rt) # TODO make this optional
     if length(rt.sampler) == 0 
       @info "Stochastic scheduling algorithm ran out of events"
       return output
     end
 
     # Get next event + unpack data
-    event::Int, key::Maybe{KeyType} = next(rt) # updates the clock time
-    rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
-    rule′::Rule, rule_type::Symbol = getrule(rule), ruletype(rule)
+    events::Vector{Pair{Int,Maybe{KeyType}}} = pops!(rt) # updates the clock time
+    N = length(rt.sampler)
 
-    @debug "$(length(output)): event $event fired @ $(rt.tnow)"
-    # If RegularPattern, we have an explicit match, otherwise randomly pick one
-    m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
-    dpo = rule_type == :DPO ? (left(rule′), m) : nothing
+    s = length(events) > 1 ? "s" : ""
+    @debug "$(length(output)): Event$s $(first.(events)) fired @ t=$(rt.tnow) ($N queued)"
 
-    # Excute rewrite rule and unpack results
-    rw_result = (rule_type, rewrite_match_maps(rule′, m))
-    rmap_ = get_rmap(rw_result...)
-    xmap = get_expr_binding_map(rule′, m, rw_result[2])
-    (lft, rght_) = get_pmap(rw_result...)
-    rmap, rght = compose.([rmap_,rght_], Ref(xmap))
-    pmap = Span(lft, rght)
-    rt.state = codom(rmap) # update runtime state
-    log!(event, pmap)      # record event result
+    # TODO some sort of check that the events are consistent with each other
+    # or a randomization of their order
+
+    update_data = [] # use to update incremental hom sets afterwards
+    # execute all the events
+    for (event, key) in events
+      rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
+      rule′::Rule, rule_type::Symbol = getrule(rule), ruletype(rule)
+      # If RegularPattern, we have an explicit match, otherwise randomly pick one
+      m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
+      # bring the match 'up to speed' given the previous (simultanous) updates
+      for (l, r) in first.(update_data)
+        m = pull_back(l, m) ⋅ r
+      end
+      dpo = rule_type == :DPO ? (left(rule′), m) : nothing
+
+      # Excute rewrite rule and unpack results
+      rw_result = (rule_type, rewrite_match_maps(rule′, m))
+      rmap_ = get_rmap(rw_result...)
+      xmap = get_expr_binding_map(rule′, m, rw_result[2])
+      (lft, rght_) = get_pmap(rw_result...)
+      rmap, rght = compose.([rmap_,rght_], Ref(xmap))
+      pmap = Span(lft, rght)
+      rt.state = codom(rmap) # update runtime state
+      log!(event, pmap)      # record event result
+      push!(update_data, (pmap, rmap, dpo, event))
+    end
 
     # All other rules can potentially update in response to the current event
     for (i, (ruleᵢ, clocksᵢ)) in enumerate(zip(abm.rules, rt.clocks))
       pt = pattern_type(ruleᵢ)
-      if pt == EmptyP()
-        i == event && enable!′(create(rt.state), i)
+      if pt == EmptyP() && i ∈ first.(events)
+        enable!′(create(rt.state), i)
       elseif pt == RegularP() # update explicit hom-set w/r/t span Xₙ ↩ • -> Xₙ₊₁
+        for ((lft, rght), rmap, dpo, fired_event) in update_data
+          del_invalid, del_new = deletion!(clocksᵢ, lft; dpo)
 
-        del_invalid, del_new = deletion!(clocksᵢ, lft; dpo)
-        for d in del_invalid # disable clocks which are invalidated
-          (i,d)==(event,key) || disable!′(i => d) # (event,key) already diabled
+          for d in del_invalid # disable clocks which are invalidated
+            (i=>d) ∈ events || disable!′(i => d) # (event,key) already diabled
+          end
+
+          for a in del_new
+            enable!′(clocksᵢ[a], i, a) 
+          end
+          # TODO change IncCCHomSet to be indexed by I↣R rather than ints
+          add_invalid, add_new = addition!(clocksᵢ, fired_event, rmap, rght)
+
+          for d in add_invalid # disable clocks which are invalidated
+            (i=>d) ∈ (events) || disable!′(i => d) # (event,key) already diabled
+          end
+          for a in add_new
+            enable!′(clocksᵢ[a], i, a) 
+          end
         end
-        for a in del_new; enable!′(clocksᵢ[a], i, a) end
-
-        add_invalid, add_new = addition!(clocksᵢ, event, rmap, rght) # rght: R → Xₙ₊₁
-        for d in add_invalid # disable clocks which are invalidated
-          (i,d)==(event,key) || disable!′(i => d) # (event,key) already diabled
-        end
-        for a in add_new; enable!′(clocksᵢ[a], i, a) end
-
-        # If the match that just fired is still preserved
-        if i == event && haskey(clocksᵢ, key)
-          enable!′(clocksᵢ[key], i, key)
-        end
-
       elseif pt isa RepresentableP
         relevant_obs = keys(pt)
+        Xs = left(first(first(update_data))), right(first(last(update_data)))
         # we need to update current timer if # of parts has changed
-        if i == event && all(>(0), nparts.(Ref(rt.state), relevant_obs))
+        if i ∈ first.(events) && all(>(0), nparts.(Ref(rt.state), relevant_obs))
           enable!′(create(rt.state), i)
-        elseif !all(ob -> allequal(nparts.(codom.(pmap), Ref(ob))), relevant_obs)
+        elseif !all(ob -> allequal(nparts.(codom.(Xs), ob)), relevant_obs)
           currently_enabled = haskey(rt, i)
           currently_enabled && disable!′(i) # Disable if active
           # enable new timer if possible to apply rule
@@ -453,9 +506,14 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
         end
       end
     end
+    # If any of the matches that were fired are still preserved, re-enable
+    for (event, key) in events
+      if haskey(rt.clocks[event], key)
+        enable!′(rt.clocks[event][key], event, key)
+      end
+    end
   end
   return output
 end
-
 
 end # module

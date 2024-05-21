@@ -121,7 +121,7 @@ view_life(codom(living_neighbors(3; alive=false)))
 underpop = TickRule(to_life, id(DeadCell); ac=[NAC(living_neighbors(2))]);
 
 # A cell dies due to overpopulation if it has > 3 living neighbors
-overpop = TickRule(to_life, id(DeadCell); ac=[PAC(living_neighbors(4))])
+overpop = TickRule(to_life, id(DeadCell); ac=[PAC(living_neighbors(4))]);
 
 # A cell is born iff it has three living neighbors
 birth = TickRule(id(DeadCell), to_life; 
@@ -133,25 +133,23 @@ GoL = ABM([underpop, overpop, birth]);  # ABM is constituted by its transition r
 GoL_coords = AddCoords(GoL); # migrate ABM into schema with coordinates
 
 # Create an initial state
-G = make_grid([1 0 1 0 1;
-               0 0 1 0 0;
-               0 1 1 1 0;
-               1 0 1 0 1;
-               1 0 1 0 1])
+G = make_grid([0 1 0;
+               1 1 1;
+               0 1 0])
 view_life(G)
 
 # Let's check that our rules work the appropriate way
 #
 # There are 12 dead cells and 13 live ones. 
 
-match_coords(f::ACSetTransformation) =  G[f[:V](1), :coords]
-match_coords(rule::ABMRule) = match_coords.(get_matches(AddCoords(rule), G))
+match_coords(f::ACSetTransformation) =  codom(f)[f[:V](1), :coords]
+match_coords(rule::ABMRule, X) = match_coords.(get_matches(AddCoords(rule), X))
 
 match_coords.(homomorphisms(LiveCell|>AddCoords, G))
 
 # Let's calculate how many matches we
 # have for the rule which determines which cells die from underpopulation: 
-match_coords(underpop)
+match_coords(underpop, G)
 
 # This is right, the corners have zero living neighbors and the bottom middle 
 # cell only has one.
@@ -159,18 +157,20 @@ match_coords(underpop)
 # Now, let's calculate how many matches we
 # have for the rule which determines which cells die from overpopulation: 
 
-match_coords(overpop)
+match_coords(overpop, G)
 
 # Below are the coordinates of the 2 dead cells that will come to life:
 
-match_coords(birth)
+match_coords(birth, G)
 
 # Run the ABM
+rt = AlgebraicABMs.ABMs.RuntimeABM(GoL_coords, G);
+trj = AlgebraicABMs.ABMs.Traj(G);
+res = run!(GoL_coords, deepcopy(rt), deepcopy(trj); maxtime=3);
 
+# View resuls
 
-res = run!(GoL_coords, G; maxevent=9);
-
-imgs = view(res, view_life)
+imgs = view(res, view_life);
 
 # We can see our starting point 
 
@@ -195,3 +195,28 @@ imgs[5]
 # 
 
 imgs[6]
+
+# 
+
+imgs[7]
+# 
+
+imgs[8]
+# 
+
+imgs[9]
+# 
+
+imgs[10]
+# 
+
+imgs[11]
+# 
+
+imgs[12]
+# 
+
+imgs[13]
+# 
+
+imgs[14]

@@ -10,9 +10,11 @@ using AlgebraicABMs.ABMs: RegularP, EmptyP, RepresentableP, RuntimeABM
 using AlgebraicRewriting.Incremental.IncrementalCC: match_vect
 
 # L = ∅, I = ∅, R = •↺
-create_loop = ABMRule(Rule(id(Graph()), # l : I -> L
-                           create(ob(terminal(Graph)))), # r : I → R
-                      DiscreteHazard(1.)) # Dirac delta, indep. of clock time / state
+create_loop = ABMRule(
+  :CreateLoop,
+  Rule(id(Graph()),                  # l : I -> L
+       create(ob(terminal(Graph)))), # r : I → R
+  DiscreteHazard(1.)) # Dirac delta, indep. of clock time / state
 
 # check that we know this rule has an empty pattern L
 @test create_loop.pattern_type == EmptyP()
@@ -24,11 +26,11 @@ add_loop = ABMRule(Rule(id(Graph(1)), #
 @test add_loop.pattern_type == RepresentableP(Dict(:V=>[1]))
 
 # •↺ ⇽ • → •
-rem_loop = ABMRule(Rule(delete(Graph(1)), id(Graph(1))), DiscreteHazard(2))
+rem_loop = ABMRule(:RemLoop, Rule(delete(Graph(1)), id(Graph(1))), DiscreteHazard(2))
 @test rem_loop.pattern_type == RegularP()
 
 # •→• ⇽ • → •
-rem_edge = ABMRule(Rule(homomorphism(Graph(2), path_graph(Graph, 2); monic=true), 
+rem_edge = ABMRule(:RemEdge, Rule(homomorphism(Graph(2), path_graph(Graph, 2); monic=true), 
                         id(Graph(2))), 
                    ContinuousHazard(1))
 @test rem_edge.pattern_type == RepresentableP(Dict(:E=>[1]))
@@ -41,7 +43,7 @@ to_graphviz(G)
 abm = ABM([create_loop, add_loop, rem_loop, rem_edge])
 
 # 2 loops, so 2 cached homs for the only rule with an explicit hom set
-@test length(only(match_vect(RuntimeABM(abm, G).clocks[3].val))) == 2
+@test length(only(match_vect(RuntimeABM(abm, G)[:RemLoop].val))) == 2
 
 traj = run!(abm, G; maxevent=10);
 

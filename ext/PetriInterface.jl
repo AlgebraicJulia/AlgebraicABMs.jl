@@ -14,7 +14,7 @@ function ABM(p::AbstractPetriNet, timers)
   return ABM(map(parts(p, :T)) do t
     tname = transition_name(p, t)
     timer = haskey(timers, tname) ? timers[tname] : timers[t]
-    ABMRule(make_rule(p, t), timer)
+    ABMRule(tname, make_rule(p, t), timer)
   end, [])
 end
 

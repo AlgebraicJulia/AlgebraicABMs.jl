@@ -193,18 +193,27 @@ function get_hazard(r::RepresentableP, f::ACSetTransformation, ::Float64,
    is_exp(h.val) ? Exponential(h.val.θ/multiplier(r,X)) : error(err)
 end
 
+const Maybe{T} = Union{Nothing, T}
+
 """
 A stochastic rewrite rule with a dependent hazard rate
 """
 @struct_hash_equal struct ABMRule
   rule::Rule
   timer::AbsTimer 
+  name::Maybe{Symbol}
   pattern_type::PatternType
-  ABMRule(r::Rule, t::AbsTimer; schema=nothing) = 
-    new(r, t, pattern_type(r, is_exp(t); schema))
+  ABMRule(r::Rule, t::AbsTimer; name=nothing, schema=nothing) = 
+    new(r, t, name, pattern_type(r, is_exp(t); schema))
 end
 
+# Give name as first arg rather than as kwarg
+ABMRule(name::Maybe{Symbol}, r::Rule, t::AbsTimer; kw...) = 
+  ABMRule(r, t; name, kw...)
+
 getrule(r::ABMRule) = r.rule
+
+Base.nameof(r::ABMRule) = r.name
 
 pattern_type(r::ABMRule) = r.pattern_type
 
@@ -218,7 +227,7 @@ get_matches(r::ABMRule, args...; kw...) =
   get_matches(getrule(r), args...; kw...)
 
 (F::Migrate′)(r::ABMRule) = 
-  ABMRule(F.F(r.rule), r.timer; schema=F.F.delta ? F.dom : F.codom)
+  ABMRule(F.F(r.rule), r.timer; name=r.name, schema=F.F.delta ? F.dom : F.codom)
 
 """
 A type which implements AbsDynamics must be able to compiled to an ODE for some 
@@ -235,10 +244,9 @@ end
 @struct_hash_equal struct ABMFlow 
   pat::ACSet
   dyn::AbsDynamics
+  name::Maybe{Symbol}
   mapping::Vector{Pair{Symbol, Int}} # pair pat's variables w/ dyn quantities
 end 
-
-const Maybe{T} = Union{Nothing, T}
 
 # Accessing an IncHomSet
 const KeyType = Union{Pair{Int, Int}}       # connected comp. homset
@@ -250,12 +258,17 @@ An agent-based model.
 @struct_hash_equal struct ABM
   rules::Vector{ABMRule}
   dyn::Vector{ABMFlow}
-  ABM(rules, dyn=[]) = new(rules, dyn)
+  names::Dict{Symbol, Int}
+  ABM(rules, dyn=[]) = new(rules, dyn, Dict(
+    n=>i for (i,n) in enumerate(nameof.(rules)) if !isnothing(n)))
 end
 
 additions(abm::ABM) = right.(abm.rules)
 
 (F::Migrate′)(abm::ABM) = ABM(F.(abm.rules), abm.dyn)
+
+Base.getindex(abm::ABM, i::Int) = abm.rules[i]
+Base.getindex(abm::ABM, n::Symbol) = abm.rules[abm.names[n]]
 
 """A collection of timers associated at runtime w/ an ABMRule"""
 abstract type AbsHomSet end
@@ -308,10 +321,13 @@ mutable struct RuntimeABM
   nevent::Int
   const sampler::SSA # stochastic simulation algorithm
   const rng::Distributions.AbstractRNG
+  const names::Dict{Symbol, Int}
   function RuntimeABM(abm::ABM, init::T; sampler=default_sampler) where T<:ACSet
     # Create the runtime
+    names = Dict(r => i for (i, r) in enumerate(nameof.(abm.rules))
+                 if !isnothing(r))
     rt = new(init, init_homset.(abm.rules, Ref(init), Ref(additions(abm))), 
-             0., 0, sampler(), Random.RandomDevice())
+             0., 0, sampler(), Random.RandomDevice(), names)
     # Initialize the firing queue
     for (i, (pat,homset)) in enumerate(zip(pattern_type.(abm.rules), rt.clocks))
       kv = if homset isa ExplicitHomSet 
@@ -338,6 +354,9 @@ Base.haskey(rt::RuntimeABM, k::Pair) = haskey(rt.sampler.transition_entry, k)
 
 Base.haskey(rt::RuntimeABM, k::Int) = 
   haskey(rt.sampler.transition_entry, k => nothing)
+
+Base.getindex(rt::RuntimeABM, i::Int) = rt.clocks[i]
+Base.getindex(rt::RuntimeABM, n::Symbol) = rt.clocks[rt.names[n]]
 
 """
 Check that RuntimeABM incremental hom sets have all valid homs.
@@ -434,7 +453,9 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
     N = length(rt.sampler)
 
     s = length(events) > 1 ? "s" : ""
-    @debug "$(length(output)): Event$s $(first.(events)) fired @ t=$(rt.tnow) ($N queued)"
+    rname(e) = let r = first(e); n = abm.rules[r].name; isnothing(n) ? r : n end
+    @debug ("Step $(length(output)): Event$s $(join(string.(rname.(events)), ", "))"
+            *" | Fired @ t = $(round(rt.tnow, digits=2)) ($N queued)")
 
     # TODO some sort of check that the events are consistent with each other
     # or a randomization of their order

@@ -98,8 +98,8 @@ const to_life = homomorphism(DeadCell, LiveCell)  # the unique map Dead → Live
 
 PAC(m) = AppCond(m; monic=true) # Positive Application condition
 NAC(m) = AppCond(m, false; monic=true) # Negative Application condition
-TickRule(args...; kw...) = # Rule which fires on 1.0, 2.0, ...
-  ABMRule(Rule(args...; kw...), DiscreteHazard(1); schema=SchLifeGraph);
+TickRule(name, args...; kw...) = # Rule which fires on 1.0, 2.0, ...
+  ABMRule(name, Rule(args...; kw...), DiscreteHazard(1); schema=SchLifeGraph);
 
 """Create a context of n living neighbors for either a dead or alive cell"""
 function living_neighbors(n::Int; alive=true)::ACSetTransformation
@@ -118,13 +118,15 @@ view_life(codom(living_neighbors(3; alive=false)))
 # ## Create model by defining update rules
 
 # A cell dies due to underpopulation if it has < 2 living neighbors
-underpop = TickRule(to_life, id(DeadCell); ac=[NAC(living_neighbors(2))]);
+underpop = 
+  TickRule(:Underpop, to_life, id(DeadCell); ac=[NAC(living_neighbors(2))]);
 
 # A cell dies due to overpopulation if it has > 3 living neighbors
-overpop = TickRule(to_life, id(DeadCell); ac=[PAC(living_neighbors(4))]);
+overpop = 
+  TickRule(:Overpop, to_life, id(DeadCell); ac=[PAC(living_neighbors(4))]);
 
 # A cell is born iff it has three living neighbors
-birth = TickRule(id(DeadCell), to_life; 
+birth = TickRule(:Birth, id(DeadCell), to_life; 
                  ac=[PAC(living_neighbors(3; alive=false)),
                      NAC(living_neighbors(4; alive=false)),
                      NAC(to_life)]); # this rule does not apply if cell is alive
@@ -164,9 +166,7 @@ match_coords(overpop, G)
 match_coords(birth, G)
 
 # Run the ABM
-rt = AlgebraicABMs.ABMs.RuntimeABM(GoL_coords, G);
-trj = AlgebraicABMs.ABMs.Traj(G);
-res = run!(GoL_coords, deepcopy(rt), deepcopy(trj); maxtime=3);
+res = run!(GoL_coords, G);
 
 # View resuls
 

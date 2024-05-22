@@ -52,16 +52,16 @@ to_graphviz(SchLifeGraph) # visualize the schema
 
 
 #=
-If `SchLifeGraph` is the piece of data which describes what it means to be a 
+If `SchLifeGraph` is the piece of data which describes what it means to be a
 world state, we need a Julia datatype whose values are world staets.
 
-The `@acset_type` function takes the specification of a datatype from a schema, 
-and it generates an efficient Julia datatype, which is essentially an in-memory
-database with the schema given by `SchLifeGraph`. 
+The `@acset_type` macro takes the specification of a datatype (i.e. a
+schema), and it generates an efficient Julia datatype, which is essentially the
+type of in-memory databases which have their schema given by `SchLifeGraph`. 
 
 This line defines `LifeState` to be this new Julia type, and futhermore it
-states that it satisfies the `AbstractSymmetricGraph` interface: Catlab already 
-has a lot of generic code to work with SymmetricGraph-like things, so now we are 
+states that it satisfies the `AbstractSymmetricGraph` interface: Catlab already
+has a lot of generic code to work with SymmetricGraph-like things, so now we are
 free to use it with LifeState.
 =#
 
@@ -399,14 +399,14 @@ match_coords(rule::ABMRule, X) = match_coords.(get_matches(AddCoords(rule), X))
 
 match_coords(underpop, G)
 
-# This is right, the corners have zero living neighbors and the bottom middle 
-# cell only has one.
+# This is right, there are no living cells which have fewer than two living 
+# neighbors.
 # 
-# Now, let's calculate which cells die from overpopulation: 
+# Now, we see that the center cell dies from overpopulation: 
 
 match_coords(overpop, G)
 
-# Below are the coordinates of the 2 dead cells that will come to life:
+# Below are the coordinates of the four cells that will come to life:
 
 match_coords(birth, G)
 

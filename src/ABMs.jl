@@ -498,7 +498,6 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
           for a in del_new
             enable!′(clocksᵢ[a], i, a) 
           end
-          # TODO change IncCCHomSet to be indexed by I↣R rather than ints
           add_invalid, add_new = addition!(clocksᵢ, rule_right, rmap, rght)
 
           for d in add_invalid # disable clocks which are invalidated

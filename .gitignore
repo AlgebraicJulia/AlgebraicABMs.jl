@@ -33,3 +33,5 @@ cache/
 figures/SIRSDiscretetrajectory.png
 
 traj/
+
+profile.pb.gz

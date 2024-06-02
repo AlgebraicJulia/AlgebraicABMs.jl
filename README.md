@@ -7,12 +7,6 @@
 
 Important example files: `docs/literate/game_of_life.jl` and `test/ABMs.jl`
 
-## Caveats
-
-[Fleck.jl](https://github.com/adolgert/Fleck.jl) is not officially released, so you must clone that repo and `dev` it.
-
-This will need to be addressed before the tests can be run / documentation can be built automatically by Github actions.
-
 ## 🛠️ Usage
 
 To locally build the documentation and the literate code examples, run the following in the command line:
@@ -24,3 +18,9 @@ To locally run the test suite, run the following command
 ```
 julia --project=test test/runtests.jl
 ```
+
+## NOTE
+This library is currently under active development, and so is not yet at a
+point where a constant API/behavior can be assumed. That being said, if this
+project looks interesting/relevant please contact us and
+[let us know](https://www.algebraicjulia.org/#contributing)!

@@ -1,7 +1,5 @@
 module Visualization
 
-export visualize
-
 import AlgebraicRewriting: view_traj 
 using Catlab: codom, right
 

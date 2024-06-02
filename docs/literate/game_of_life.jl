@@ -280,7 +280,7 @@ whether the application condition is satisfied) is required to be monic.
 =#
 
 PAC(m) = AppCond(m; monic=true) # Positive Application condition
-NAC(m) = AppCond(m, false; monic=true) # Negative Application condition
+NAC(m) = AppCond(m, false; monic=true); # Negative Application condition
 
 #=
 The following line provides a shorthand for constructing the fundamental 
@@ -333,7 +333,7 @@ is 'read backwards' (thought of as deletion), and the second one is 'read
 forwards' (thought of as addition). When one's rule does pure addition, the
 first morphism is an identity map. Likewise when one's rule does pure deletion,
 the second morphism is an identity map. So rules `underpop` and `overpop` will
-have their rule given by first to_life` and then `id(Cell)`, whereas the rule
+have their rule given by first `to_life` and then `id(Cell)`, whereas the rule
 `birth` will first have `id(Cell)` and then `to_life`. The real interesting part
 of these constructions then is their application conditions (given via a 
 keyword argument `ac`).
@@ -373,7 +373,7 @@ birth = TickRule(:Birth, id(Cell), to_life;
 
 # We can now create the model: an ABM is constituted by its transition rules
 
-GoL = ABM([underpop, overpop, birth]);
+GoL = ABM(SchLifeGraph, [underpop, overpop, birth]);
 
 # We wrote an ABM for `LifeState`, but we want to apply it to `G` as its 
 # initial state. `G` is not a `LifeState`, but rather a `LifeStateCoords`! 
@@ -392,7 +392,7 @@ view_life(G)
 # considered. It returns the coordinatees of those matches.
 
 match_coords(f::ACSetTransformation) =  codom(f)[f[:V](1), :coords]
-match_coords(rule::ABMRule, X) = match_coords.(get_matches(AddCoords(rule), X))
+match_coords(rule::ABMRule, X) = match_coords.(get_matches(AddCoords(rule), X));
 
 # Let's calculate which cells will die from underpopulation in the first time 
 # step: 

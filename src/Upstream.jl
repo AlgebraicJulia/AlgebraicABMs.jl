@@ -4,7 +4,7 @@ module Upstream
 using Catlab, AlgebraicRewriting
 import Catlab: is_isomorphic, Presentation
 using AlgebraicRewriting.Rewrite.Migration: pres_hash
-using Fleck: FirstToFire, disable!, next
+using CompetingClocks: FirstToFire, disable!, next
 using Distributions: AbstractRNG
 
 # Upstream to Catlab
@@ -29,8 +29,8 @@ end
 # Upstream to AlgRewriting
 ##########################
 
-# Fleck
-#######
+# CompetingClocks
+#################
 """Get the next event and disable it. This will """
 function Base.pop!(sampler::FirstToFire{K,T}, rng::AbstractRNG, 
                    tnow::T)::Tuple{T,K} where {K,T}

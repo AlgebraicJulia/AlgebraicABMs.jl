@@ -4,7 +4,7 @@ module ABMs
 export ABM, ABMRule, run!, DiscreteHazard, ContinuousHazard, FullClosure, 
        ClosureState, ClosureTime
 
-using Distributions, Fleck, Random
+using Distributions, CompetingClocks, Random
 using DataStructures: DefaultDict
 using StructEquality
 
@@ -259,13 +259,19 @@ An agent-based model.
   rules::Vector{ABMRule}
   dyn::Vector{ABMFlow}
   names::Dict{Symbol, Int}
-  ABM(rules, dyn=[]) = new(rules, dyn, Dict(
-    n=>i for (i,n) in enumerate(nameof.(rules)) if !isnothing(n)))
+  schema::Union{Nothing, Presentation}
+  function ABM(rules, dyn=[]; schema=nothing) 
+    names = Dict(n=>i for (i,n) in enumerate(nameof.(rules)) if !isnothing(n))
+    new(rules, dyn, names, schema)
+  end
 end
+
+ABM(schema::Presentation, rules::Vector{ABMRule}, dyn=[]) = 
+  ABM(rules, dyn; schema)
 
 additions(abm::ABM) = right.(abm.rules)
 
-(F::Migrate)(abm::ABM) = ABM(F.(abm.rules), abm.dyn)
+(F::Migrate)(abm::ABM) = ABM(F.delta ? F.P1 : F.P2, F.(abm.rules), abm.dyn)
 
 Base.getindex(abm::ABM, i::Int) = abm.rules[i]
 Base.getindex(abm::ABM, n::Symbol) = abm.rules[abm.names[n]]
@@ -296,11 +302,12 @@ deletion!(h::ExplicitHomSet, m; kw...) =  deletion!(h.val, m; kw...)
 addition!(h::ExplicitHomSet, k, r, u) = addition!(h.val, k, r, u)
 
 """Initialize runtime hom-set given the rule and the initial state"""
-function init_homset(rule::ABMRule, state::ACSet, additions::Vector{<:ACSetTransformation})
+function init_homset(rule::ABMRule, state::ACSet, 
+                     additions::Vector{<:ACSetTransformation}, S::Union{Nothing,Presentation})
   p, sd = pattern_type(rule), state_dep(rule.timer)
   p == EmptyP() && return EmptyHomSet()
   (sd || p == RegularP()  
-   ) && return ExplicitHomSet(IncHomSet(getrule(rule), state,  additions))
+   ) && return ExplicitHomSet(IncHomSet(getrule(rule), state,  additions, S))
   @assert p isa RepresentableP  "$(typeof(p))"
   return RepresentableHomSet()
 end 
@@ -326,7 +333,8 @@ mutable struct RuntimeABM
     # Create the runtime
     names = Dict(r => i for (i, r) in enumerate(nameof.(abm.rules))
                  if !isnothing(r))
-    rt = new(init, init_homset.(abm.rules, Ref(init), Ref(additions(abm))), 
+    rt = new(init, init_homset.(abm.rules, Ref(init), Ref(additions(abm)), 
+                                Ref(abm.schema)), 
              0., 0, sampler(), Random.RandomDevice(), names)
     # Initialize the firing queue
     for (i, (pat,homset)) in enumerate(zip(pattern_type.(abm.rules), rt.clocks))

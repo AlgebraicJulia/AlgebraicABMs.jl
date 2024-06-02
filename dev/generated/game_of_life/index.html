@@ -1,0 +1,3163 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Conway&#39;s Game of Life · AlgebraicABMs.jl</title><meta name="title" content="Conway&#39;s Game of Life · AlgebraicABMs.jl"/><meta property="og:title" content="Conway&#39;s Game of Life · AlgebraicABMs.jl"/><meta property="twitter:title" content="Conway&#39;s Game of Life · AlgebraicABMs.jl"/><meta name="description" content="Documentation for AlgebraicABMs.jl."/><meta property="og:description" content="Documentation for AlgebraicABMs.jl."/><meta property="twitter:description" content="Documentation for AlgebraicABMs.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicABMs.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicABMs.jl</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../sir_petri/">Petri-net based ABMs</a></li><li class="is-active"><a class="tocitem" href>Conway&#39;s Game of Life</a><ul class="internal"><li><a class="tocitem" href="#Set-up"><span>Set-up</span></a></li><li><a class="tocitem" href="#Schema"><span>Schema</span></a></li><li><a class="tocitem" href="#Initial-state-for-the-model"><span>Initial state for the model</span></a></li><li><a class="tocitem" href="#Building-blocks-for-the-Game-of-Life-model"><span>Building blocks for the Game of Life model</span></a></li><li><a class="tocitem" href="#Create-model-by-defining-update-rules"><span>Create model by defining update rules</span></a></li><li><a class="tocitem" href="#Checking-our-rules-make-sense"><span>Checking our rules make sense</span></a></li><li><a class="tocitem" href="#Running-the-ABM"><span>Running the ABM</span></a></li><li><a class="tocitem" href="#View-results"><span>View results</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Conway&#39;s Game of Life</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Conway&#39;s Game of Life</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicABMs.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicABMs.jl/blob/main/docs/literate/game_of_life.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Conway&#39;s-Game-of-Life"><a class="docs-heading-anchor" href="#Conway&#39;s-Game-of-Life">Conway&#39;s Game of Life</a><a id="Conway&#39;s-Game-of-Life-1"></a><a class="docs-heading-anchor-permalink" href="#Conway&#39;s-Game-of-Life" title="Permalink"></a></h1><h2 id="Set-up"><a class="docs-heading-anchor" href="#Set-up">Set-up</a><a id="Set-up-1"></a><a class="docs-heading-anchor-permalink" href="#Set-up" title="Permalink"></a></h2><p>The first step of running a Julia program is to load the external libraries one will be using. We do this with a <code>using</code> statement.</p><pre><code class="language-julia hljs">using AlgebraicABMs, Catlab, AlgebraicRewriting</code></pre><p>We will turn on debug messages for AlgebraicABMs, which means we get to see what the ABM is thinking at each time step when we eventually run it.</p><pre><code class="language-julia hljs">ENV[&quot;JULIA_DEBUG&quot;] = &quot;AlgebraicABMs&quot;;</code></pre><h2 id="Schema"><a class="docs-heading-anchor" href="#Schema">Schema</a><a id="Schema-1"></a><a class="docs-heading-anchor-permalink" href="#Schema" title="Permalink"></a></h2><p>Defining an schema is stating what data is required to specify a state of the simulation at some point in time. In AlgebraicJulia, this is done via declaring a <code>Presentation</code>, i.e. a database schema. Objects (<code>Ob</code>, or tables) are types of entities. Homs (<code>Hom</code>, or foreign keys) are functional relationships between the aforementioned entities. AttrTypes are placeholders for Julia types, which are assigned to objects via attributes (<code>Attr</code>).</p><p>The schema below <em>extends</em> the schema for symmetric graphs, which consists in two tables (<code>E</code> and <code>V</code>, for edges and vertices) and homs (<code>src</code>, <code>tgt</code>) which relate the edges to the vertices. We consider each vertex to be a cell in the Game of Life. This is a generalization of the game, since it is not enforced that every cell has eight neighbors. However the example we run at the end will be a regular grid of vertices.</p><p>Everything in the <code>@present</code> presentation below simply adds to the schema of symmetric graphs, indicated by the subtype operator <code>&lt;: SchSymmetricGraph</code>. We need one more piece of information to specify a state of the world in the game of life: which cells are alive? There are a few ways one could distinguish the living cells from the dead ones. Here, we add a new table, <code>Life</code> which can be though of as a set of &quot;life tokens&quot;. A function, <code>live</code>, assigns each such token to a cell, designating it to be alive. Thus the subset of living cells is the image of the <code>live</code> function.</p><p>To summarize, a state of the world in the Game of Life is a set of cells (i.e. vertices), a set of edges (with <code>src</code>/<code>tgt</code> functions) which encode which cells are near each other, and a distinguished subset of cells given by the <code>live</code> function which marks which cells are alive. This information is summarized in the following graphical depiction of the schema.</p><pre><code class="language-julia hljs">@present SchLifeGraph &lt;: SchSymmetricGraph begin
+  Life::Ob
+  live::Hom(Life,V)
+end
+
+to_graphviz(SchLifeGraph) # visualize the schema</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="170pt" height="170pt"
+ viewBox="0.00 0.00 169.85 169.63" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 165.63)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-165.63 165.85,-165.63 165.85,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="50.96" cy="-86.21" rx="27" ry="18"/>
+<text text-anchor="middle" x="50.96" y="-82.51" font-family="Times,serif" font-size="14.00">V</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="94.85" cy="-143.63" rx="27" ry="18"/>
+<text text-anchor="middle" x="94.85" y="-139.93" font-family="Times,serif" font-size="14.00">E</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M88.7,-125.84C85.12,-120.04 80.5,-113.56 75.71,-107.54"/>
+<polygon fill="black" stroke="black" points="78.26,-105.13 69.16,-99.72 72.9,-109.63 78.26,-105.13"/>
+<text text-anchor="middle" x="93.21" y="-105.49" font-family="Times,serif" font-size="14.00">src</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M76.72,-130.19C72.03,-124.91 67.13,-118.7 62.83,-112.61"/>
+<polygon fill="black" stroke="black" points="65.51,-110.32 57.06,-103.92 59.68,-114.19 65.51,-110.32"/>
+<text text-anchor="middle" x="58.78" y="-110.2" font-family="Times,serif" font-size="14.00">tgt</text>
+</g>
+<!-- n2&%2345;&gt;n2 -->
+<g id="edge3" class="edge">
+<title>n2&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M120.3,-150.32C130.88,-150.78 139.85,-148.55 139.85,-143.63 139.85,-140.4 135.99,-138.32 130.34,-137.41"/>
+<polygon fill="black" stroke="black" points="130.45,-133.91 120.3,-136.93 130.12,-140.91 130.45,-133.91"/>
+<text text-anchor="middle" x="150.85" y="-139.93" font-family="Times,serif" font-size="14.00">inv</text>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="none" stroke="black" cx="27" cy="-18" rx="27" ry="18"/>
+<text text-anchor="middle" x="27" y="-14.3" font-family="Times,serif" font-size="14.00">Life</text>
+</g>
+<!-- n3&%2345;&gt;n1 -->
+<g id="edge4" class="edge">
+<title>n3&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M33.17,-35.56C35.67,-42.67 38.6,-51.04 41.37,-58.9"/>
+<polygon fill="black" stroke="black" points="38.11,-60.19 44.73,-68.46 44.71,-57.87 38.11,-60.19"/>
+<text text-anchor="middle" x="24.27" y="-51.03" font-family="Times,serif" font-size="14.00">live</text>
+</g>
+</g>
+</svg>
+'/><p>If <code>SchLifeGraph</code> is the piece of data which describes what it means to be a world state, we need a Julia datatype whose values are world staets.</p><p>The <code>@acset_type</code> macro takes the specification of a datatype (i.e. a schema), and it generates an efficient Julia datatype, which is essentially the type of in-memory databases which have their schema given by <code>SchLifeGraph</code>.</p><p>This line defines <code>LifeState</code> to be this new Julia type, and futhermore it states that it satisfies the <code>AbstractSymmetricGraph</code> interface: Catlab already has a lot of generic code to work with SymmetricGraph-like things, so now we are free to use it with LifeState.</p><pre><code class="language-julia hljs">@acset_type LifeState(SchLifeGraph) &lt;: AbstractSymmetricGraph;</code></pre><p>Before we start defining the dynamics of our Game of Life, it&#39;ll be helpful to visualize states of the world. One thing that <code>SchLifeGraph</code> did not have was (x,y) coordinate information. Because we were representing proximity of vertices by the prescence or absence of an edge connecting them, these coordinates are irrelevant to the model dynamics.</p><p>However, the coordinates are useful for visualization, so the below code creates a new schema which extends the previous one to add coordinates.</p><pre><code class="language-julia hljs">@present SchLifeCoords &lt;: SchLifeGraph begin
+  Coords::AttrType
+  coords::Attr(V, Coords)
+end
+
+to_graphviz(SchLifeCoords)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="252pt" height="175pt"
+ viewBox="0.00 0.00 251.56 174.50" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 170.5)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-170.5 247.56,-170.5 247.56,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="100.68" cy="-89.71" rx="27" ry="18"/>
+<text text-anchor="middle" x="100.68" y="-86.01" font-family="Times,serif" font-size="14.00">V</text>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="black" stroke="black" cx="52.8" cy="-149.7" rx="1.8" ry="1.8"/>
+<text text-anchor="middle" x="25.5" y="-155.3" font-family="Times,serif" font-size="14.00">Coords</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge5" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M87.85,-105.79C79.09,-116.76 67.78,-130.93 60.41,-140.17"/>
+<polygon fill="black" stroke="black" points="57.46,-138.25 53.96,-148.25 62.94,-142.61 57.46,-138.25"/>
+<text text-anchor="middle" x="50.13" y="-126.78" font-family="Times,serif" font-size="14.00">coords</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="176.56" cy="-101.49" rx="27" ry="18"/>
+<text text-anchor="middle" x="176.56" y="-97.79" font-family="Times,serif" font-size="14.00">E</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M153.94,-91.6C148.77,-90.45 143.14,-89.43 137.55,-88.61"/>
+<polygon fill="black" stroke="black" points="137.98,-85.14 127.62,-87.38 137.11,-92.09 137.98,-85.14"/>
+<text text-anchor="middle" x="140.24" y="-78.91" font-family="Times,serif" font-size="14.00">src</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M149.46,-103.81C144.3,-103.28 138.84,-102.52 133.53,-101.61"/>
+<polygon fill="black" stroke="black" points="134.07,-98.15 123.58,-99.66 132.72,-105.02 134.07,-98.15"/>
+<text text-anchor="middle" x="130.49" y="-106.51" font-family="Times,serif" font-size="14.00">tgt</text>
+</g>
+<!-- n2&%2345;&gt;n2 -->
+<g id="edge3" class="edge">
+<title>n2&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M202.01,-108.18C212.59,-108.64 221.56,-106.41 221.56,-101.49 221.56,-98.26 217.7,-96.19 212.05,-95.28"/>
+<polygon fill="black" stroke="black" points="212.16,-91.78 202.01,-94.8 211.83,-98.77 212.16,-91.78"/>
+<text text-anchor="middle" x="232.56" y="-97.79" font-family="Times,serif" font-size="14.00">inv</text>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="none" stroke="black" cx="73.31" cy="-18" rx="27" ry="18"/>
+<text text-anchor="middle" x="73.31" y="-14.3" font-family="Times,serif" font-size="14.00">Life</text>
+</g>
+<!-- n3&%2345;&gt;n1 -->
+<g id="edge4" class="edge">
+<title>n3&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M80.07,-35.73C83.19,-43.89 86.95,-53.75 90.41,-62.81"/>
+<polygon fill="black" stroke="black" points="87.16,-64.1 93.99,-72.19 93.7,-61.6 87.16,-64.1"/>
+<text text-anchor="middle" x="72.24" y="-53.07" font-family="Times,serif" font-size="14.00">live</text>
+</g>
+</g>
+</svg>
+'/><p>Likewise for this new schema, we need to use <code>@acset_type</code> to turn the description of the required data of a world state (the schema) into an actual Julia datatype. One difference here is that there is now an attribute present, which means we need to indicate what Julia type it should be.</p><p>Our new Julia type is <code>LifeStateCoords</code>, and we pick <code>Tuple{Int,Int}</code> as our representation of (x,y) coordinates.</p><pre><code class="language-julia hljs">@acset_type LifeStateCoords(SchLifeCoords){Tuple{Int,Int}} &lt;: AbstractSymmetricGraph;</code></pre><p>The following code is helpful for visualizing a game state. It&#39;s not important to understand this code in order to understand the model. It uses coordinates if the input is a <code>LifeStateCoords</code>, but otherwise it places the vertices in an arbitrary location.</p><pre><code class="language-julia hljs">function view_life(X::Union{LifeState, LifeStateCoords}, pth=tempname())
+  pg = PropertyGraph{Any}(; prog=&quot;neato&quot;, graph=Dict(),
+    node=Dict(:shape =&gt; &quot;circle&quot;, :style =&gt; &quot;filled&quot;, :margin =&gt; &quot;0&quot;),
+    edge=Dict(:dir =&gt; &quot;none&quot;, :minlen =&gt; &quot;1&quot;))
+  add_vertices!(pg, nparts(X, :V))
+  for v in vertices(X)
+    is_alive = isempty(incident(X, v, :live))
+    set_vprop!(pg, v, :fillcolor, is_alive ? &quot;red&quot; : &quot;green&quot;)
+    if X isa LifeStateCoords
+      x, y = X[v, :coords]
+      set_vprop!(pg, v, :pos, &quot;$x,$(y)!&quot;)
+    end
+  end
+  for e in filter(e -&gt; X[e, :inv] &gt; e, edges(X))
+    add_edge!(pg, X[e, :src], X[e, :tgt])
+  end
+  G = to_graphviz(pg)
+  open(pth, &quot;w&quot;) do io
+    show(io, &quot;image/svg+xml&quot;, G)
+  end
+  return G
+end;</code></pre><p>This helper function creates an ordinary, square grid and initializes cells as alive or dead via a boolean-valued input matrix. Like above, one does not need to understand this in order to understand the Game of Life model - it&#39;s just a convenient way to generate some initial states to run the model on.</p><pre><code class="language-julia hljs">function make_grid(curr::AbstractMatrix)
+  n, m = size(curr)
+  n == m || error(&quot;Must be square&quot;)
+  X, coords = LifeStateCoords(), Dict()
+  for j in 1:n, i in 1:n
+    coords[i=&gt;j] = add_vertex!(X; coords=(i, j))
+    Bool(curr[i, j]) &amp;&amp; add_part!(X, :Life, live=coords[i=&gt;j])
+  end
+  for i in 1:n, j in 1:n
+    i &lt; n &amp;&amp; add_edge!(X, coords[i=&gt;j], coords[i+1=&gt;j])
+    j &lt; n &amp;&amp; add_edge!(X, coords[i=&gt;j], coords[i=&gt;j+1])
+    i &lt; n &amp;&amp; j &lt; n &amp;&amp; add_edge!(X, coords[i=&gt;j], coords[i+1=&gt;j+1])
+    i &lt; n &amp;&amp; j &gt; 1 &amp;&amp; add_edge!(X, coords[i=&gt;j], coords[i+1=&gt;j-1])
+  end
+  return X
+end;</code></pre><p>Another helper function, which creates a game state on a square n × n grid. If the keyword <code>random</code> is <code>true</code> (which it is, by default), then cells have a 50% chance of being alive.</p><p>Note: red color means that a cell is not in the image of the <code>live</code> function.</p><pre><code class="language-julia hljs">make_grid(n::Int, random=true) =
+  make_grid((random ? rand : zeros)(Bool, (n, n)));
+
+view_life(make_grid(3)) # For example, visualize a random 3x3 grid</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="188pt" height="188pt"
+ viewBox="0.00 0.00 188.00 188.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 184)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-184 184,-184 184,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="green" stroke="black" cx="18" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="90" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="90" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M36.17,-18C47,-18 60.71,-18 71.59,-18"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="18" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-86.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge2" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M18,-36.17C18,-47 18,-60.71 18,-71.59"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="red" stroke="black" cx="90" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="90" y="-86.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n1&%2345;&gt;n5 -->
+<g id="edge3" class="edge">
+<title>n1&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M30.87,-30.87C43.98,-43.98 64.17,-64.17 77.24,-77.24"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="green" stroke="black" cx="162" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="162" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge10" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M108.17,-18C119,-18 132.71,-18 143.59,-18"/>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge11" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M90,-36.17C90,-47 90,-60.71 90,-71.59"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="162" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="162" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n2&%2345;&gt;n6 -->
+<g id="edge12" class="edge">
+<title>n2&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M102.87,-30.87C115.98,-43.98 136.17,-64.17 149.24,-77.24"/>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge19" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M162,-36.17C162,-47 162,-60.71 162,-71.59"/>
+</g>
+<!-- n4&%2345;&gt;n2 -->
+<g id="edge7" class="edge">
+<title>n4&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M30.87,-77.13C43.98,-64.02 64.17,-43.83 77.24,-30.76"/>
+</g>
+<!-- n4&%2345;&gt;n5 -->
+<g id="edge4" class="edge">
+<title>n4&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M36.17,-90C47,-90 60.71,-90 71.59,-90"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="red" stroke="black" cx="18" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-158.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge5" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M18,-108.17C18,-119 18,-132.71 18,-143.59"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="red" stroke="black" cx="90" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="90" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n4&%2345;&gt;n8 -->
+<g id="edge6" class="edge">
+<title>n4&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M30.87,-102.87C43.98,-115.98 64.17,-136.17 77.24,-149.24"/>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge16" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M102.87,-77.13C115.98,-64.02 136.17,-43.83 149.24,-30.76"/>
+</g>
+<!-- n5&%2345;&gt;n6 -->
+<g id="edge13" class="edge">
+<title>n5&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M108.17,-90C119,-90 132.71,-90 143.59,-90"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge14" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M90,-108.17C90,-119 90,-132.71 90,-143.59"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="green" stroke="black" cx="162" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="162" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n5&%2345;&gt;n9 -->
+<g id="edge15" class="edge">
+<title>n5&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M102.87,-102.87C115.98,-115.98 136.17,-136.17 149.24,-149.24"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge20" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M162,-108.17C162,-119 162,-132.71 162,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n5 -->
+<g id="edge9" class="edge">
+<title>n7&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M30.87,-149.13C43.98,-136.02 64.17,-115.83 77.24,-102.76"/>
+</g>
+<!-- n7&%2345;&gt;n8 -->
+<g id="edge8" class="edge">
+<title>n7&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M36.17,-162C47,-162 60.71,-162 71.59,-162"/>
+</g>
+<!-- n8&%2345;&gt;n6 -->
+<g id="edge18" class="edge">
+<title>n8&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M102.87,-149.13C115.98,-136.02 136.17,-115.83 149.24,-102.76"/>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge17" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M108.17,-162C119,-162 132.71,-162 143.59,-162"/>
+</g>
+</g>
+</svg>
+'/><p>We&#39;ve now constructed two schemas and two datatypes. No doubt they are related to each other, and AlgebraicJulia gives us the ability to take advantage of that relationship in order to automatically values of <code>LifeStateCoords</code> into values of <code>LifeState</code> (it does this is the obvious way: it throws away the coordinate information). More interestingly, it gives us a way of converting a <code>LifeState</code> into a <code>LifeStateCoords</code>: we give &quot;generic&quot; coordinates to each of the vertices.</p><p>If we call <code>AddCoords</code> on something built out of <code>LifeState</code> instances, it will make the corresponding thing built out of <code>LifeStateCoords</code> instances.</p><pre><code class="language-julia hljs">AddCoords = Migrate(SchLifeGraph, LifeState, SchLifeCoords, LifeStateCoords;
+                    delta=false);</code></pre><h2 id="Initial-state-for-the-model"><a class="docs-heading-anchor" href="#Initial-state-for-the-model">Initial state for the model</a><a id="Initial-state-for-the-model-1"></a><a class="docs-heading-anchor-permalink" href="#Initial-state-for-the-model" title="Permalink"></a></h2><p>With our <code>make_grid</code> function, it&#39;s easy to create an initial state.</p><pre><code class="language-julia hljs">G = make_grid([0 1 0;
+               1 1 1;
+               0 1 0])
+view_life(G)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="188pt" height="188pt"
+ viewBox="0.00 0.00 188.00 188.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 184)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-184 184,-184 184,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="18" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="green" stroke="black" cx="90" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="90" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M36.17,-18C47,-18 60.71,-18 71.59,-18"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="18" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-86.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge2" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M18,-36.17C18,-47 18,-60.71 18,-71.59"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="90" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="90" y="-86.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n1&%2345;&gt;n5 -->
+<g id="edge3" class="edge">
+<title>n1&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M30.87,-30.87C43.98,-43.98 64.17,-64.17 77.24,-77.24"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="162" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="162" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge10" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M108.17,-18C119,-18 132.71,-18 143.59,-18"/>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge11" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M90,-36.17C90,-47 90,-60.71 90,-71.59"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="162" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="162" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n2&%2345;&gt;n6 -->
+<g id="edge12" class="edge">
+<title>n2&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M102.87,-30.87C115.98,-43.98 136.17,-64.17 149.24,-77.24"/>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge19" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M162,-36.17C162,-47 162,-60.71 162,-71.59"/>
+</g>
+<!-- n4&%2345;&gt;n2 -->
+<g id="edge7" class="edge">
+<title>n4&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M30.87,-77.13C43.98,-64.02 64.17,-43.83 77.24,-30.76"/>
+</g>
+<!-- n4&%2345;&gt;n5 -->
+<g id="edge4" class="edge">
+<title>n4&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M36.17,-90C47,-90 60.71,-90 71.59,-90"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="red" stroke="black" cx="18" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-158.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge5" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M18,-108.17C18,-119 18,-132.71 18,-143.59"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="90" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="90" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n4&%2345;&gt;n8 -->
+<g id="edge6" class="edge">
+<title>n4&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M30.87,-102.87C43.98,-115.98 64.17,-136.17 77.24,-149.24"/>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge16" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M102.87,-77.13C115.98,-64.02 136.17,-43.83 149.24,-30.76"/>
+</g>
+<!-- n5&%2345;&gt;n6 -->
+<g id="edge13" class="edge">
+<title>n5&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M108.17,-90C119,-90 132.71,-90 143.59,-90"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge14" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M90,-108.17C90,-119 90,-132.71 90,-143.59"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="162" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="162" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n5&%2345;&gt;n9 -->
+<g id="edge15" class="edge">
+<title>n5&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M102.87,-102.87C115.98,-115.98 136.17,-136.17 149.24,-149.24"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge20" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M162,-108.17C162,-119 162,-132.71 162,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n5 -->
+<g id="edge9" class="edge">
+<title>n7&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M30.87,-149.13C43.98,-136.02 64.17,-115.83 77.24,-102.76"/>
+</g>
+<!-- n7&%2345;&gt;n8 -->
+<g id="edge8" class="edge">
+<title>n7&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M36.17,-162C47,-162 60.71,-162 71.59,-162"/>
+</g>
+<!-- n8&%2345;&gt;n6 -->
+<g id="edge18" class="edge">
+<title>n8&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M102.87,-149.13C115.98,-136.02 136.17,-115.83 149.24,-102.76"/>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge17" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M108.17,-162C119,-162 132.71,-162 143.59,-162"/>
+</g>
+</g>
+</svg>
+'/><p>We&#39;ll use this world-state, called <code>G</code> throughout the model-building process to confirm our model building blocks work the way they&#39;re supposed to work.</p><h2 id="Building-blocks-for-the-Game-of-Life-model"><a class="docs-heading-anchor" href="#Building-blocks-for-the-Game-of-Life-model">Building blocks for the Game of Life model</a><a id="Building-blocks-for-the-Game-of-Life-model-1"></a><a class="docs-heading-anchor-permalink" href="#Building-blocks-for-the-Game-of-Life-model" title="Permalink"></a></h2><p>We are now ready to build our model, which will have three rules: underpopulation, overpopulation, and birth. When we write these rules down, it will be very succinct due to the hard work of this section: laying out the building blocks.</p><p>Our first building block is an instance of <code>LifeState</code>. Now, we don&#39;t want to think of this as a particular state of the game of life, but rather we want to think of it as a <em>pattern</em> for which we could look for <em>matches</em> inside a real game state.</p><p>This pattern is very simple: it consists of a single vertex. A <em>match</em> for this pattern in some world state <code>X</code> is just a choice of a vertex in <code>X</code>.</p><pre><code class="language-julia hljs">const Cell = LifeState(1) # this syntax means: one vertex, nothing else
+
+view_life(Cell) # red color means this cell is not in image of `life` function.</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="44pt" height="44pt"
+ viewBox="0.00 0.00 44.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 40,-40 40,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="18" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+</g>
+</svg>
+'/><p>Let&#39;s confirm that this works. Our fancy word for &quot;pattern match&quot; is &quot;homomorphism&quot; (&quot;morphism&quot;, for short). To look for morphisms from <code>Cell</code> into <code>G</code> is to ask &quot;find me all the cells!&quot;. The Catlab function <code>homomorphisms</code> exhaustively finds all such answers to a query like this. When we run it below, we ought see there are 9 answers to this query, as there are 9 vertices in the 3 × 3 grid.</p><pre><code class="language-julia hljs">length(homomorphisms(AddCoords(Cell), G))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">9</code></pre><p>Our next building block is also a <code>LifeState</code> instance that we think of as a pattern. It is a cell but, furthermore, it is a cell which has been marked as alive. This means it consists in one vertex, one &#39;life token&#39;, and the function <code>live</code> which maps <code>Life₁</code> to <code>V₁</code>.</p><pre><code class="language-julia hljs">const LiveCell = @acset LifeState begin V=1; Life=1; live=1 end
+
+view_life(LiveCell) # green color means this cell is in image of `life` function</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="44pt" height="44pt"
+ viewBox="0.00 0.00 44.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 40,-40 40,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="green" stroke="black" cx="18" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+</g>
+</svg>
+'/><p>Let&#39;s confirm that this works.  If we look for morphisms from <code>LiveCell</code> into <code>G</code>, meaning &quot;find me all the live cells!&quot;, we will see there are 5 answers to this query</p><pre><code class="language-julia hljs">length(homomorphisms(AddCoords(LiveCell), G))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5</code></pre><p>Now we will see our first morphism that is not between some pattern and some world state but, rather, is <em>between</em> our the two previous patterns. A morphism from <code>Cell</code> is an answer to the query &quot;give me a Cell!&quot; and there is exactly one possible answer to that query in <code>LiveCell</code>, thus we can use <code>homomorphism</code>, which returns an arbitrary morphism from the set of morphisms computed by <code>homomorphisms</code>.</p><p><code>to_life</code> is an important morphism to understand as it is the fundamental &quot;engine&quot; of the Game of Life. When read &#39;forwards&#39;, it expresses the idea of taking a vertex and adding a Life token to it. When read &#39;backwards&#39;, it expresses the idea of removing a Life token from a vertex. This is all we actually do when simulating the Game of Life: we toggle cells between being marked as alive vs no longer being marked as alive.</p><pre><code class="language-julia hljs">const to_life = homomorphism(Cell, LiveCell);</code></pre><p>The remaining challenge is to control the circumstances under which we perform this fundamental action of toggling life status. This is done via a technique called &quot;Positive (resp. negative) application conditions&quot;. An application condition is a way of embedding a small pattern in a larger pattern (a context) with the assertion that, for a specific match of the small pattern in a world state, that this context is required (resp. forbidden) to hold.</p><p>Here the small pattern, the large pattern, and the world state will all be <code>LifeState</code> instances. And the the &#39;embedding&#39; of the small pattern into the large pattern as well as the match of the small pattern in the world will both be morphisms between <code>LifeState</code> instances.</p><p>The following lines of code provide shorthand names for positive and negative applications. The use of the keyword <code>monic</code> can be ignored if this is your first time looking at AlgebraicJulia code. If not, the keyword indicates that the morphism (from the larger context to the world state, used to determine whether the application condition is satisfied) is required to be monic.</p><pre><code class="language-julia hljs">PAC(m) = AppCond(m; monic=true) # Positive Application condition
+NAC(m) = AppCond(m, false; monic=true); # Negative Application condition</code></pre><p>The following line provides a shorthand for constructing the fundamental building block of an ABM, which is an <code>ABMRule</code>. Such a rule requires a name, an instance of a rewrite <code>Rule</code> object from <code>AlgebraicRewriting</code>, as well as a timer which indicates the frequency at which the rule fires. All three of our rules will fire at every tick in time.</p><pre><code class="language-julia hljs">TickRule(name, I_L, I_R; ac) = # Rule which fires on 1.0, 2.0, ...
+  ABMRule(name, Rule(I_L, I_R; ac), DiscreteHazard(1); schema=SchLifeGraph);</code></pre><p>The context for determining whether the rules of underpopulation, overpopulation, or birth apply are always framed in terms of &quot;how many living neighbors do you have?&quot;. Thus, it is helpful to have function which creates a context of <code>n</code> living neighbors which we can use with various values of <code>n</code>.</p><p>Providing a context for a pattern is more than just giving an instance of <code>LifeState</code>; we also have to say how the pattern relates to the context. So our pattern here is either a vertex (if <code>alive=false</code>) or a vertex marked as alive (<code>alive=true</code>, which is the default value). This morphism data is what allows us to pick out the <em>center</em> vertex as the relevant starting point when checking if a particular match (which is a choice of a vertex in the game state) actually exists with that context of <code>n</code> living living neighbors.</p><p>When we visualize the result of this function below, we&#39;re only visualizing the <em>codomain</em> of the morphism (i.e. what the morphism is pointing to).</p><pre><code class="language-julia hljs">function living_neighbors(n::Int; alive=true)::ACSetTransformation
+  X = LifeState(1)
+  alive &amp;&amp; add_part!(X, :Life, live=1)
+  for _ in 1:n
+    v = add_part!(X, :V)
+    add_part!(X, :Life, live=v)
+    add_edge!(X, v, 1)
+  end
+  homomorphism(alive ? LiveCell : Cell, X; initial=(V=[1],))
+end;
+
+view_life(codom(living_neighbors(3; alive=false)))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="168pt" height="176pt"
+ viewBox="0.00 0.00 167.76 175.70" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 171.7)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-171.7 163.76,-171.7 163.76,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="65.88" cy="-89.71" rx="18" ry="18"/>
+<text text-anchor="middle" x="65.88" y="-86.01" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="green" stroke="black" cx="141.76" cy="-101.49" rx="18" ry="18"/>
+<text text-anchor="middle" x="141.76" y="-97.79" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M123.78,-98.7C111.68,-96.82 95.8,-94.36 83.74,-92.48"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="green" stroke="black" cx="38.51" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="38.51" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n3&%2345;&gt;n1 -->
+<g id="edge2" class="edge">
+<title>n3&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M44.99,-34.99C49.36,-46.43 55.09,-61.43 59.44,-72.84"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="18" cy="-149.7" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-146" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n4&%2345;&gt;n1 -->
+<g id="edge3" class="edge">
+<title>n4&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M29.35,-135.48C36.98,-125.92 47,-113.37 54.62,-103.83"/>
+</g>
+</g>
+</svg>
+'/><h2 id="Create-model-by-defining-update-rules"><a class="docs-heading-anchor" href="#Create-model-by-defining-update-rules">Create model by defining update rules</a><a id="Create-model-by-defining-update-rules-1"></a><a class="docs-heading-anchor-permalink" href="#Create-model-by-defining-update-rules" title="Permalink"></a></h2><p>We now have our building blocks in place and can build the three rules.</p><p>A rewrite rule is given by a pair of morphisms, <code>L ← I → R</code>. The first morphism is &#39;read backwards&#39; (thought of as deletion), and the second one is &#39;read forwards&#39; (thought of as addition). When one&#39;s rule does pure addition, the first morphism is an identity map. Likewise when one&#39;s rule does pure deletion, the second morphism is an identity map. So rules <code>underpop</code> and <code>overpop</code> will have their rule given by first <code>to_life</code> and then <code>id(Cell)</code>, whereas the rule <code>birth</code> will first have <code>id(Cell)</code> and then <code>to_life</code>. The real interesting part of these constructions then is their application conditions (given via a keyword argument <code>ac</code>).</p><p>Let&#39;s start with underpopulation: a cell dies due to underpopulation if it has fewer than two living neighbors. So the application condition is a <em>negative</em> application: if we notice a cell has the context of two living neighbors, we should <strong>not</strong> apply the <code>underpop</code> rule.</p><pre><code class="language-julia hljs">underpop =
+  TickRule(:Underpop, to_life, id(Cell); ac=[NAC(living_neighbors(2))]);</code></pre><p>A cell dies due to overpopulation if it has over 3 living neighbors. So here our condition of applying the death rewrite (i.e. reading the morphism <code>to_life</code> backwards) is a <em>positive</em> application condition. We cannot kill a cell unless, furthermore, that cell is in a context where it has (at least) four living neighbors.</p><pre><code class="language-julia hljs">overpop =
+  TickRule(:Overpop, to_life, id(Cell); ac=[PAC(living_neighbors(4))]);</code></pre><p>The rule for birth is that one must have a dead cell with exactly three living neighbors. Our pattern here is simple a vertex, which could match any cell in the game state! So we need to use multiple application conditions to make sure the cell has at least three neighbors, fewer than four neighbors, and doesn&#39;t already have a life token. These three constraints are respectively the three elements of the list below.</p><pre><code class="language-julia hljs">birth = TickRule(:Birth, id(Cell), to_life;
+                 ac=[PAC(living_neighbors(3; alive=false)),
+                     NAC(living_neighbors(4; alive=false)),
+                     NAC(to_life)]); # this rule does not apply if cell is alive</code></pre><p>We can now create the model: an ABM is constituted by its transition rules</p><pre><code class="language-julia hljs">GoL = ABM(SchLifeGraph, [underpop, overpop, birth]);</code></pre><p>We wrote an ABM for <code>LifeState</code>, but we want to apply it to <code>G</code> as its initial state. <code>G</code> is not a <code>LifeState</code>, but rather a <code>LifeStateCoords</code>! Luckily, we defined <code>AddCoords</code> earlier which knows how to migrate things in the language of <code>LifeState</code> into the language of <code>LifeStateCoords</code>.</p><pre><code class="language-julia hljs">GoL_coords = AddCoords(GoL);</code></pre><h2 id="Checking-our-rules-make-sense"><a class="docs-heading-anchor" href="#Checking-our-rules-make-sense">Checking our rules make sense</a><a id="Checking-our-rules-make-sense-1"></a><a class="docs-heading-anchor-permalink" href="#Checking-our-rules-make-sense" title="Permalink"></a></h2><p>Let&#39;s remind ourselves what G looks like</p><pre><code class="language-julia hljs">view_life(G)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="188pt" height="188pt"
+ viewBox="0.00 0.00 188.00 188.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 184)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-184 184,-184 184,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="18" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="green" stroke="black" cx="90" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="90" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M36.17,-18C47,-18 60.71,-18 71.59,-18"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="18" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-86.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge2" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M18,-36.17C18,-47 18,-60.71 18,-71.59"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="90" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="90" y="-86.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n1&%2345;&gt;n5 -->
+<g id="edge3" class="edge">
+<title>n1&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M30.87,-30.87C43.98,-43.98 64.17,-64.17 77.24,-77.24"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="162" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="162" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge10" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M108.17,-18C119,-18 132.71,-18 143.59,-18"/>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge11" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M90,-36.17C90,-47 90,-60.71 90,-71.59"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="162" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="162" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n2&%2345;&gt;n6 -->
+<g id="edge12" class="edge">
+<title>n2&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M102.87,-30.87C115.98,-43.98 136.17,-64.17 149.24,-77.24"/>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge19" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M162,-36.17C162,-47 162,-60.71 162,-71.59"/>
+</g>
+<!-- n4&%2345;&gt;n2 -->
+<g id="edge7" class="edge">
+<title>n4&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M30.87,-77.13C43.98,-64.02 64.17,-43.83 77.24,-30.76"/>
+</g>
+<!-- n4&%2345;&gt;n5 -->
+<g id="edge4" class="edge">
+<title>n4&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M36.17,-90C47,-90 60.71,-90 71.59,-90"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="red" stroke="black" cx="18" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-158.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge5" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M18,-108.17C18,-119 18,-132.71 18,-143.59"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="90" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="90" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n4&%2345;&gt;n8 -->
+<g id="edge6" class="edge">
+<title>n4&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M30.87,-102.87C43.98,-115.98 64.17,-136.17 77.24,-149.24"/>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge16" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M102.87,-77.13C115.98,-64.02 136.17,-43.83 149.24,-30.76"/>
+</g>
+<!-- n5&%2345;&gt;n6 -->
+<g id="edge13" class="edge">
+<title>n5&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M108.17,-90C119,-90 132.71,-90 143.59,-90"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge14" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M90,-108.17C90,-119 90,-132.71 90,-143.59"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="162" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="162" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n5&%2345;&gt;n9 -->
+<g id="edge15" class="edge">
+<title>n5&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M102.87,-102.87C115.98,-115.98 136.17,-136.17 149.24,-149.24"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge20" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M162,-108.17C162,-119 162,-132.71 162,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n5 -->
+<g id="edge9" class="edge">
+<title>n7&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M30.87,-149.13C43.98,-136.02 64.17,-115.83 77.24,-102.76"/>
+</g>
+<!-- n7&%2345;&gt;n8 -->
+<g id="edge8" class="edge">
+<title>n7&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M36.17,-162C47,-162 60.71,-162 71.59,-162"/>
+</g>
+<!-- n8&%2345;&gt;n6 -->
+<g id="edge18" class="edge">
+<title>n8&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M102.87,-149.13C115.98,-136.02 136.17,-115.83 149.24,-102.76"/>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge17" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M108.17,-162C119,-162 132.71,-162 143.59,-162"/>
+</g>
+</g>
+</svg>
+'/><p>This code below counts how many matches a rule has, application conditions considered. It returns the coordinatees of those matches.</p><pre><code class="language-julia hljs">match_coords(f::ACSetTransformation) =  codom(f)[f[:V](1), :coords]
+match_coords(rule::ABMRule, X) = match_coords.(get_matches(AddCoords(rule), X));</code></pre><p>Let&#39;s calculate which cells will die from underpopulation in the first time step:</p><pre><code class="language-julia hljs">match_coords(underpop, G)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Any[]</code></pre><p>This is right, there are no living cells which have fewer than two living neighbors.</p><p>Now, we see that the center cell dies from overpopulation:</p><pre><code class="language-julia hljs">match_coords(overpop, G)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{Tuple{Int64, Int64}}:
+ (2, 2)</code></pre><p>Below are the coordinates of the four cells that will come to life:</p><pre><code class="language-julia hljs">match_coords(birth, G)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">4-element Vector{Tuple{Int64, Int64}}:
+ (1, 1)
+ (3, 1)
+ (1, 3)
+ (3, 3)</code></pre><h2 id="Running-the-ABM"><a class="docs-heading-anchor" href="#Running-the-ABM">Running the ABM</a><a id="Running-the-ABM-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-ABM" title="Permalink"></a></h2><p>This is easy! Pass in our model and our initial state. We optionally could limit the run via some maximum number of steps or time, but this one will achieve steady state within 3 time steps.</p><pre><code class="language-julia hljs">res = run!(GoL_coords, G);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Debug: Step 0: Events Overpop, Birth, Birth, Birth, Birth | Fired @ t = 1.0 (0 queued)
+└ @ AlgebraicABMs.ABMs ~/work/AlgebraicABMs.jl/AlgebraicABMs.jl/src/ABMs.jl:462
+┌ Debug: Step 5: Events Overpop, Overpop, Overpop, Overpop | Fired @ t = 2.0 (0 queued)
+└ @ AlgebraicABMs.ABMs ~/work/AlgebraicABMs.jl/AlgebraicABMs.jl/src/ABMs.jl:462
+┌ Debug: Step 9: Events Underpop, Underpop, Underpop, Underpop | Fired @ t = 3.0 (0 queued)
+└ @ AlgebraicABMs.ABMs ~/work/AlgebraicABMs.jl/AlgebraicABMs.jl/src/ABMs.jl:462
+[ Info: Stochastic scheduling algorithm ran out of events</code></pre><h2 id="View-results"><a class="docs-heading-anchor" href="#View-results">View results</a><a id="View-results-1"></a><a class="docs-heading-anchor-permalink" href="#View-results" title="Permalink"></a></h2><p>We use <code>view_life</code> to generate a bunch of images capturing the trajectory.</p><pre><code class="language-julia hljs">imgs = view(res, view_life);</code></pre><p>The first image is our starting point.</p><pre><code class="language-julia hljs">imgs[1]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="270pt" height="211pt"
+ viewBox="0.00 0.00 270.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 266,-207 266,4 -4,4"/>
+<text text-anchor="middle" x="131" y="-187.8" font-family="Times,serif" font-size="14.00">Step 0 @ t=0: Event (Initial state)</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="59" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="59" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="green" stroke="black" cx="131" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="131" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M77.17,-18C88,-18 101.71,-18 112.59,-18"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="59" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="59" y="-86.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge2" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M59,-36.17C59,-47 59,-60.71 59,-71.59"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="131" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="131" y="-86.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n1&%2345;&gt;n5 -->
+<g id="edge3" class="edge">
+<title>n1&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M71.87,-30.87C84.98,-43.98 105.17,-64.17 118.24,-77.24"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="203" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="203" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge10" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M149.17,-18C160,-18 173.71,-18 184.59,-18"/>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge11" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M131,-36.17C131,-47 131,-60.71 131,-71.59"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="203" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="203" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n2&%2345;&gt;n6 -->
+<g id="edge12" class="edge">
+<title>n2&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M143.87,-30.87C156.98,-43.98 177.17,-64.17 190.24,-77.24"/>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge19" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M203,-36.17C203,-47 203,-60.71 203,-71.59"/>
+</g>
+<!-- n4&%2345;&gt;n2 -->
+<g id="edge7" class="edge">
+<title>n4&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M71.87,-77.13C84.98,-64.02 105.17,-43.83 118.24,-30.76"/>
+</g>
+<!-- n4&%2345;&gt;n5 -->
+<g id="edge4" class="edge">
+<title>n4&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M77.17,-90C88,-90 101.71,-90 112.59,-90"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="red" stroke="black" cx="59" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="59" y="-158.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge5" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M59,-108.17C59,-119 59,-132.71 59,-143.59"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="131" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="131" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n4&%2345;&gt;n8 -->
+<g id="edge6" class="edge">
+<title>n4&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M71.87,-102.87C84.98,-115.98 105.17,-136.17 118.24,-149.24"/>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge16" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M143.87,-77.13C156.98,-64.02 177.17,-43.83 190.24,-30.76"/>
+</g>
+<!-- n5&%2345;&gt;n6 -->
+<g id="edge13" class="edge">
+<title>n5&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M149.17,-90C160,-90 173.71,-90 184.59,-90"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge14" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M131,-108.17C131,-119 131,-132.71 131,-143.59"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="203" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="203" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n5&%2345;&gt;n9 -->
+<g id="edge15" class="edge">
+<title>n5&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M143.87,-102.87C156.98,-115.98 177.17,-136.17 190.24,-149.24"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge20" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M203,-108.17C203,-119 203,-132.71 203,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n5 -->
+<g id="edge9" class="edge">
+<title>n7&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M71.87,-149.13C84.98,-136.02 105.17,-115.83 118.24,-102.76"/>
+</g>
+<!-- n7&%2345;&gt;n8 -->
+<g id="edge8" class="edge">
+<title>n7&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M77.17,-162C88,-162 101.71,-162 112.59,-162"/>
+</g>
+<!-- n8&%2345;&gt;n6 -->
+<g id="edge18" class="edge">
+<title>n8&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M143.87,-149.13C156.98,-136.02 177.17,-115.83 190.24,-102.76"/>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge17" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M149.17,-162C160,-162 173.71,-162 184.59,-162"/>
+</g>
+</g>
+</svg>
+'/><p>The next steps (all taking place at <code>t=1.0</code>) are the four births and one overpopulation death.</p><pre><code class="language-julia hljs">imgs[2]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="199pt" height="211pt"
+ viewBox="0.00 0.00 199.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 195,-207 195,4 -4,4"/>
+<text text-anchor="middle" x="95.5" y="-187.8" font-family="Times,serif" font-size="14.00">Step 1 @ t=1.0: Event 2</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-86.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="red" stroke="black" cx="167.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-14.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge16" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M108.37,-77.13C121.48,-64.02 141.67,-43.83 154.74,-30.76"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n1&%2345;&gt;n6 -->
+<g id="edge13" class="edge">
+<title>n1&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M113.67,-90C124.5,-90 138.21,-90 149.09,-90"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n1&%2345;&gt;n8 -->
+<g id="edge14" class="edge">
+<title>n1&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M95.5,-108.17C95.5,-119 95.5,-132.71 95.5,-143.59"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="167.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n1&%2345;&gt;n9 -->
+<g id="edge15" class="edge">
+<title>n1&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M108.37,-102.87C121.48,-115.98 141.67,-136.17 154.74,-149.24"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="23.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge3" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M36.37,-30.87C49.48,-43.98 69.67,-64.17 82.74,-77.24"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge1" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M41.67,-18C52.5,-18 66.21,-18 77.09,-18"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-86.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M23.5,-36.17C23.5,-47 23.5,-60.71 23.5,-71.59"/>
+</g>
+<!-- n3&%2345;&gt;n1 -->
+<g id="edge11" class="edge">
+<title>n3&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M95.5,-36.17C95.5,-47 95.5,-60.71 95.5,-71.59"/>
+</g>
+<!-- n3&%2345;&gt;n4 -->
+<g id="edge10" class="edge">
+<title>n3&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M113.67,-18C124.5,-18 138.21,-18 149.09,-18"/>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge12" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M108.37,-30.87C121.48,-43.98 141.67,-64.17 154.74,-77.24"/>
+</g>
+<!-- n4&%2345;&gt;n6 -->
+<g id="edge19" class="edge">
+<title>n4&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M167.5,-36.17C167.5,-47 167.5,-60.71 167.5,-71.59"/>
+</g>
+<!-- n5&%2345;&gt;n1 -->
+<g id="edge4" class="edge">
+<title>n5&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M41.67,-90C52.5,-90 66.21,-90 77.09,-90"/>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge7" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M36.37,-77.13C49.48,-64.02 69.67,-43.83 82.74,-30.76"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="red" stroke="black" cx="23.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-158.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n5&%2345;&gt;n7 -->
+<g id="edge5" class="edge">
+<title>n5&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M23.5,-108.17C23.5,-119 23.5,-132.71 23.5,-143.59"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge6" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M36.37,-102.87C49.48,-115.98 69.67,-136.17 82.74,-149.24"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge20" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M167.5,-108.17C167.5,-119 167.5,-132.71 167.5,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n1 -->
+<g id="edge9" class="edge">
+<title>n7&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M36.37,-149.13C49.48,-136.02 69.67,-115.83 82.74,-102.76"/>
+</g>
+<!-- n7&%2345;&gt;n8 -->
+<g id="edge8" class="edge">
+<title>n7&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M41.67,-162C52.5,-162 66.21,-162 77.09,-162"/>
+</g>
+<!-- n8&%2345;&gt;n6 -->
+<g id="edge18" class="edge">
+<title>n8&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M108.37,-149.13C121.48,-136.02 141.67,-115.83 154.74,-102.76"/>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge17" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M113.67,-162C124.5,-162 138.21,-162 149.09,-162"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[3]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="199pt" height="211pt"
+ viewBox="0.00 0.00 199.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 195,-207 195,4 -4,4"/>
+<text text-anchor="middle" x="95.5" y="-187.8" font-family="Times,serif" font-size="14.00">Step 2 @ t=1.0: Event 3</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n1&%2345;&gt;n6 -->
+<g id="edge19" class="edge">
+<title>n1&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M167.5,-36.17C167.5,-47 167.5,-60.71 167.5,-71.59"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-86.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge16" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M108.37,-77.13C121.48,-64.02 141.67,-43.83 154.74,-30.76"/>
+</g>
+<!-- n2&%2345;&gt;n6 -->
+<g id="edge13" class="edge">
+<title>n2&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M113.67,-90C124.5,-90 138.21,-90 149.09,-90"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n2&%2345;&gt;n8 -->
+<g id="edge14" class="edge">
+<title>n2&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M95.5,-108.17C95.5,-119 95.5,-132.71 95.5,-143.59"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="167.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n2&%2345;&gt;n9 -->
+<g id="edge15" class="edge">
+<title>n2&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M108.37,-102.87C121.48,-115.98 141.67,-136.17 154.74,-149.24"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="23.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n3&%2345;&gt;n2 -->
+<g id="edge3" class="edge">
+<title>n3&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M36.37,-30.87C49.48,-43.98 69.67,-64.17 82.74,-77.24"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-14.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n3&%2345;&gt;n4 -->
+<g id="edge1" class="edge">
+<title>n3&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M41.67,-18C52.5,-18 66.21,-18 77.09,-18"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-86.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n3&%2345;&gt;n5 -->
+<g id="edge2" class="edge">
+<title>n3&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M23.5,-36.17C23.5,-47 23.5,-60.71 23.5,-71.59"/>
+</g>
+<!-- n4&%2345;&gt;n1 -->
+<g id="edge10" class="edge">
+<title>n4&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M113.67,-18C124.5,-18 138.21,-18 149.09,-18"/>
+</g>
+<!-- n4&%2345;&gt;n2 -->
+<g id="edge11" class="edge">
+<title>n4&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M95.5,-36.17C95.5,-47 95.5,-60.71 95.5,-71.59"/>
+</g>
+<!-- n4&%2345;&gt;n6 -->
+<g id="edge12" class="edge">
+<title>n4&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M108.37,-30.87C121.48,-43.98 141.67,-64.17 154.74,-77.24"/>
+</g>
+<!-- n5&%2345;&gt;n2 -->
+<g id="edge4" class="edge">
+<title>n5&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M41.67,-90C52.5,-90 66.21,-90 77.09,-90"/>
+</g>
+<!-- n5&%2345;&gt;n4 -->
+<g id="edge7" class="edge">
+<title>n5&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M36.37,-77.13C49.48,-64.02 69.67,-43.83 82.74,-30.76"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="red" stroke="black" cx="23.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-158.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n5&%2345;&gt;n7 -->
+<g id="edge5" class="edge">
+<title>n5&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M23.5,-108.17C23.5,-119 23.5,-132.71 23.5,-143.59"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge6" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M36.37,-102.87C49.48,-115.98 69.67,-136.17 82.74,-149.24"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge20" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M167.5,-108.17C167.5,-119 167.5,-132.71 167.5,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n2 -->
+<g id="edge9" class="edge">
+<title>n7&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M36.37,-149.13C49.48,-136.02 69.67,-115.83 82.74,-102.76"/>
+</g>
+<!-- n7&%2345;&gt;n8 -->
+<g id="edge8" class="edge">
+<title>n7&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M41.67,-162C52.5,-162 66.21,-162 77.09,-162"/>
+</g>
+<!-- n8&%2345;&gt;n6 -->
+<g id="edge18" class="edge">
+<title>n8&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M108.37,-149.13C121.48,-136.02 141.67,-115.83 154.74,-102.76"/>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge17" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M113.67,-162C124.5,-162 138.21,-162 149.09,-162"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[4]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="199pt" height="211pt"
+ viewBox="0.00 0.00 199.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 195,-207 195,4 -4,4"/>
+<text text-anchor="middle" x="95.5" y="-187.8" font-family="Times,serif" font-size="14.00">Step 3 @ t=1.0: Event 3</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-158.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-86.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n2&%2345;&gt;n7 -->
+<g id="edge19" class="edge">
+<title>n2&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M167.5,-36.17C167.5,-47 167.5,-60.71 167.5,-71.59"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-86.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n3&%2345;&gt;n1 -->
+<g id="edge15" class="edge">
+<title>n3&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M108.37,-102.87C121.48,-115.98 141.67,-136.17 154.74,-149.24"/>
+</g>
+<!-- n3&%2345;&gt;n2 -->
+<g id="edge16" class="edge">
+<title>n3&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M108.37,-77.13C121.48,-64.02 141.67,-43.83 154.74,-30.76"/>
+</g>
+<!-- n3&%2345;&gt;n7 -->
+<g id="edge13" class="edge">
+<title>n3&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M113.67,-90C124.5,-90 138.21,-90 149.09,-90"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n3&%2345;&gt;n9 -->
+<g id="edge14" class="edge">
+<title>n3&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M95.5,-108.17C95.5,-119 95.5,-132.71 95.5,-143.59"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="red" stroke="black" cx="23.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-14.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n4&%2345;&gt;n3 -->
+<g id="edge3" class="edge">
+<title>n4&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M36.37,-30.87C49.48,-43.98 69.67,-64.17 82.74,-77.24"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-14.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n4&%2345;&gt;n5 -->
+<g id="edge1" class="edge">
+<title>n4&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M41.67,-18C52.5,-18 66.21,-18 77.09,-18"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n4&%2345;&gt;n6 -->
+<g id="edge2" class="edge">
+<title>n4&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M23.5,-36.17C23.5,-47 23.5,-60.71 23.5,-71.59"/>
+</g>
+<!-- n5&%2345;&gt;n2 -->
+<g id="edge10" class="edge">
+<title>n5&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M113.67,-18C124.5,-18 138.21,-18 149.09,-18"/>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge11" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M95.5,-36.17C95.5,-47 95.5,-60.71 95.5,-71.59"/>
+</g>
+<!-- n5&%2345;&gt;n7 -->
+<g id="edge12" class="edge">
+<title>n5&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M108.37,-30.87C121.48,-43.98 141.67,-64.17 154.74,-77.24"/>
+</g>
+<!-- n6&%2345;&gt;n3 -->
+<g id="edge4" class="edge">
+<title>n6&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M41.67,-90C52.5,-90 66.21,-90 77.09,-90"/>
+</g>
+<!-- n6&%2345;&gt;n5 -->
+<g id="edge7" class="edge">
+<title>n6&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M36.37,-77.13C49.48,-64.02 69.67,-43.83 82.74,-30.76"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="red" stroke="black" cx="23.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n6&%2345;&gt;n8 -->
+<g id="edge5" class="edge">
+<title>n6&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M23.5,-108.17C23.5,-119 23.5,-132.71 23.5,-143.59"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge6" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M36.37,-102.87C49.48,-115.98 69.67,-136.17 82.74,-149.24"/>
+</g>
+<!-- n7&%2345;&gt;n1 -->
+<g id="edge20" class="edge">
+<title>n7&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M167.5,-108.17C167.5,-119 167.5,-132.71 167.5,-143.59"/>
+</g>
+<!-- n8&%2345;&gt;n3 -->
+<g id="edge9" class="edge">
+<title>n8&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M36.37,-149.13C49.48,-136.02 69.67,-115.83 82.74,-102.76"/>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge8" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M41.67,-162C52.5,-162 66.21,-162 77.09,-162"/>
+</g>
+<!-- n9&%2345;&gt;n1 -->
+<g id="edge17" class="edge">
+<title>n9&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M113.67,-162C124.5,-162 138.21,-162 149.09,-162"/>
+</g>
+<!-- n9&%2345;&gt;n7 -->
+<g id="edge18" class="edge">
+<title>n9&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M108.37,-149.13C121.48,-136.02 141.67,-115.83 154.74,-102.76"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[5]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="199pt" height="211pt"
+ viewBox="0.00 0.00 199.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 195,-207 195,4 -4,4"/>
+<text text-anchor="middle" x="95.5" y="-187.8" font-family="Times,serif" font-size="14.00">Step 4 @ t=1.0: Event 3</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-86.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge3" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M36.37,-30.87C49.48,-43.98 69.67,-64.17 82.74,-77.24"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-14.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n1&%2345;&gt;n5 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M41.67,-18C52.5,-18 66.21,-18 77.09,-18"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n1&%2345;&gt;n6 -->
+<g id="edge2" class="edge">
+<title>n1&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M23.5,-36.17C23.5,-47 23.5,-60.71 23.5,-71.59"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-158.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-86.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n3&%2345;&gt;n7 -->
+<g id="edge19" class="edge">
+<title>n3&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M167.5,-36.17C167.5,-47 167.5,-60.71 167.5,-71.59"/>
+</g>
+<!-- n4&%2345;&gt;n2 -->
+<g id="edge15" class="edge">
+<title>n4&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M108.37,-102.87C121.48,-115.98 141.67,-136.17 154.74,-149.24"/>
+</g>
+<!-- n4&%2345;&gt;n3 -->
+<g id="edge16" class="edge">
+<title>n4&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M108.37,-77.13C121.48,-64.02 141.67,-43.83 154.74,-30.76"/>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge13" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M113.67,-90C124.5,-90 138.21,-90 149.09,-90"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n4&%2345;&gt;n9 -->
+<g id="edge14" class="edge">
+<title>n4&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M95.5,-108.17C95.5,-119 95.5,-132.71 95.5,-143.59"/>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge10" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M113.67,-18C124.5,-18 138.21,-18 149.09,-18"/>
+</g>
+<!-- n5&%2345;&gt;n4 -->
+<g id="edge11" class="edge">
+<title>n5&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M95.5,-36.17C95.5,-47 95.5,-60.71 95.5,-71.59"/>
+</g>
+<!-- n5&%2345;&gt;n7 -->
+<g id="edge12" class="edge">
+<title>n5&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M108.37,-30.87C121.48,-43.98 141.67,-64.17 154.74,-77.24"/>
+</g>
+<!-- n6&%2345;&gt;n4 -->
+<g id="edge4" class="edge">
+<title>n6&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M41.67,-90C52.5,-90 66.21,-90 77.09,-90"/>
+</g>
+<!-- n6&%2345;&gt;n5 -->
+<g id="edge7" class="edge">
+<title>n6&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M36.37,-77.13C49.48,-64.02 69.67,-43.83 82.74,-30.76"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="red" stroke="black" cx="23.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n6&%2345;&gt;n8 -->
+<g id="edge5" class="edge">
+<title>n6&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M23.5,-108.17C23.5,-119 23.5,-132.71 23.5,-143.59"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge6" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M36.37,-102.87C49.48,-115.98 69.67,-136.17 82.74,-149.24"/>
+</g>
+<!-- n7&%2345;&gt;n2 -->
+<g id="edge20" class="edge">
+<title>n7&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M167.5,-108.17C167.5,-119 167.5,-132.71 167.5,-143.59"/>
+</g>
+<!-- n8&%2345;&gt;n4 -->
+<g id="edge9" class="edge">
+<title>n8&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M36.37,-149.13C49.48,-136.02 69.67,-115.83 82.74,-102.76"/>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge8" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M41.67,-162C52.5,-162 66.21,-162 77.09,-162"/>
+</g>
+<!-- n9&%2345;&gt;n2 -->
+<g id="edge17" class="edge">
+<title>n9&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M113.67,-162C124.5,-162 138.21,-162 149.09,-162"/>
+</g>
+<!-- n9&%2345;&gt;n7 -->
+<g id="edge18" class="edge">
+<title>n9&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M108.37,-149.13C121.48,-136.02 141.67,-115.83 154.74,-102.76"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[6]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="199pt" height="211pt"
+ viewBox="0.00 0.00 199.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 195,-207 195,4 -4,4"/>
+<text text-anchor="middle" x="95.5" y="-187.8" font-family="Times,serif" font-size="14.00">Step 5 @ t=1.0: Event 3</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-158.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-86.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n1&%2345;&gt;n5 -->
+<g id="edge9" class="edge">
+<title>n1&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M36.37,-149.13C49.48,-136.02 69.67,-115.83 82.74,-102.76"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n1&%2345;&gt;n9 -->
+<g id="edge8" class="edge">
+<title>n1&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M41.67,-162C52.5,-162 66.21,-162 77.09,-162"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge3" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M36.37,-30.87C49.48,-43.98 69.67,-64.17 82.74,-77.24"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-14.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n2&%2345;&gt;n6 -->
+<g id="edge1" class="edge">
+<title>n2&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M41.67,-18C52.5,-18 66.21,-18 77.09,-18"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-86.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n2&%2345;&gt;n7 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M23.5,-36.17C23.5,-47 23.5,-60.71 23.5,-71.59"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-158.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-14.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-86.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n4&%2345;&gt;n8 -->
+<g id="edge19" class="edge">
+<title>n4&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M167.5,-36.17C167.5,-47 167.5,-60.71 167.5,-71.59"/>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge15" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M108.37,-102.87C121.48,-115.98 141.67,-136.17 154.74,-149.24"/>
+</g>
+<!-- n5&%2345;&gt;n4 -->
+<g id="edge16" class="edge">
+<title>n5&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M108.37,-77.13C121.48,-64.02 141.67,-43.83 154.74,-30.76"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge13" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M113.67,-90C124.5,-90 138.21,-90 149.09,-90"/>
+</g>
+<!-- n5&%2345;&gt;n9 -->
+<g id="edge14" class="edge">
+<title>n5&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M95.5,-108.17C95.5,-119 95.5,-132.71 95.5,-143.59"/>
+</g>
+<!-- n6&%2345;&gt;n4 -->
+<g id="edge10" class="edge">
+<title>n6&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M113.67,-18C124.5,-18 138.21,-18 149.09,-18"/>
+</g>
+<!-- n6&%2345;&gt;n5 -->
+<g id="edge11" class="edge">
+<title>n6&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M95.5,-36.17C95.5,-47 95.5,-60.71 95.5,-71.59"/>
+</g>
+<!-- n6&%2345;&gt;n8 -->
+<g id="edge12" class="edge">
+<title>n6&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M108.37,-30.87C121.48,-43.98 141.67,-64.17 154.74,-77.24"/>
+</g>
+<!-- n7&%2345;&gt;n1 -->
+<g id="edge5" class="edge">
+<title>n7&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M23.5,-108.17C23.5,-119 23.5,-132.71 23.5,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n5 -->
+<g id="edge4" class="edge">
+<title>n7&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M41.67,-90C52.5,-90 66.21,-90 77.09,-90"/>
+</g>
+<!-- n7&%2345;&gt;n6 -->
+<g id="edge7" class="edge">
+<title>n7&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M36.37,-77.13C49.48,-64.02 69.67,-43.83 82.74,-30.76"/>
+</g>
+<!-- n7&%2345;&gt;n9 -->
+<g id="edge6" class="edge">
+<title>n7&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M36.37,-102.87C49.48,-115.98 69.67,-136.17 82.74,-149.24"/>
+</g>
+<!-- n8&%2345;&gt;n3 -->
+<g id="edge20" class="edge">
+<title>n8&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M167.5,-108.17C167.5,-119 167.5,-132.71 167.5,-143.59"/>
+</g>
+<!-- n9&%2345;&gt;n3 -->
+<g id="edge17" class="edge">
+<title>n9&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M113.67,-162C124.5,-162 138.21,-162 149.09,-162"/>
+</g>
+<!-- n9&%2345;&gt;n8 -->
+<g id="edge18" class="edge">
+<title>n9&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M108.37,-149.13C121.48,-136.02 141.67,-115.83 154.74,-102.76"/>
+</g>
+</g>
+</svg>
+'/><p>At this point, we move to <code>t=2.0</code>. There are now four cells which are overpopulated.</p><pre><code class="language-julia hljs">imgs[7]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="199pt" height="211pt"
+ viewBox="0.00 0.00 199.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 195,-207 195,4 -4,4"/>
+<text text-anchor="middle" x="95.5" y="-187.8" font-family="Times,serif" font-size="14.00">Step 6 @ t=2.0: Event 2</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="167.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-86.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-158.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge20" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M167.5,-108.17C167.5,-119 167.5,-132.71 167.5,-143.59"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-158.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n2&%2345;&gt;n6 -->
+<g id="edge9" class="edge">
+<title>n2&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M36.37,-149.13C49.48,-136.02 69.67,-115.83 82.74,-102.76"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-158.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n2&%2345;&gt;n9 -->
+<g id="edge8" class="edge">
+<title>n2&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M41.67,-162C52.5,-162 66.21,-162 77.09,-162"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge3" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M36.37,-30.87C49.48,-43.98 69.67,-64.17 82.74,-77.24"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-14.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n3&%2345;&gt;n7 -->
+<g id="edge1" class="edge">
+<title>n3&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M41.67,-18C52.5,-18 66.21,-18 77.09,-18"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-86.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n3&%2345;&gt;n8 -->
+<g id="edge2" class="edge">
+<title>n3&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M23.5,-36.17C23.5,-47 23.5,-60.71 23.5,-71.59"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-14.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n5&%2345;&gt;n1 -->
+<g id="edge19" class="edge">
+<title>n5&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M167.5,-36.17C167.5,-47 167.5,-60.71 167.5,-71.59"/>
+</g>
+<!-- n6&%2345;&gt;n1 -->
+<g id="edge13" class="edge">
+<title>n6&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M113.67,-90C124.5,-90 138.21,-90 149.09,-90"/>
+</g>
+<!-- n6&%2345;&gt;n4 -->
+<g id="edge15" class="edge">
+<title>n6&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M108.37,-102.87C121.48,-115.98 141.67,-136.17 154.74,-149.24"/>
+</g>
+<!-- n6&%2345;&gt;n5 -->
+<g id="edge16" class="edge">
+<title>n6&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M108.37,-77.13C121.48,-64.02 141.67,-43.83 154.74,-30.76"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge14" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M95.5,-108.17C95.5,-119 95.5,-132.71 95.5,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n1 -->
+<g id="edge12" class="edge">
+<title>n7&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M108.37,-30.87C121.48,-43.98 141.67,-64.17 154.74,-77.24"/>
+</g>
+<!-- n7&%2345;&gt;n5 -->
+<g id="edge10" class="edge">
+<title>n7&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M113.67,-18C124.5,-18 138.21,-18 149.09,-18"/>
+</g>
+<!-- n7&%2345;&gt;n6 -->
+<g id="edge11" class="edge">
+<title>n7&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M95.5,-36.17C95.5,-47 95.5,-60.71 95.5,-71.59"/>
+</g>
+<!-- n8&%2345;&gt;n2 -->
+<g id="edge5" class="edge">
+<title>n8&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M23.5,-108.17C23.5,-119 23.5,-132.71 23.5,-143.59"/>
+</g>
+<!-- n8&%2345;&gt;n6 -->
+<g id="edge4" class="edge">
+<title>n8&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M41.67,-90C52.5,-90 66.21,-90 77.09,-90"/>
+</g>
+<!-- n8&%2345;&gt;n7 -->
+<g id="edge7" class="edge">
+<title>n8&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M36.37,-77.13C49.48,-64.02 69.67,-43.83 82.74,-30.76"/>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge6" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M36.37,-102.87C49.48,-115.98 69.67,-136.17 82.74,-149.24"/>
+</g>
+<!-- n9&%2345;&gt;n1 -->
+<g id="edge18" class="edge">
+<title>n9&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M108.37,-149.13C121.48,-136.02 141.67,-115.83 154.74,-102.76"/>
+</g>
+<!-- n9&%2345;&gt;n4 -->
+<g id="edge17" class="edge">
+<title>n9&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M113.67,-162C124.5,-162 138.21,-162 149.09,-162"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[8]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="199pt" height="211pt"
+ viewBox="0.00 0.00 199.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 195,-207 195,4 -4,4"/>
+<text text-anchor="middle" x="95.5" y="-187.8" font-family="Times,serif" font-size="14.00">Step 7 @ t=2.0: Event 2</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-158.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="167.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-86.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge18" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M108.37,-149.13C121.48,-136.02 141.67,-115.83 154.74,-102.76"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-158.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n1&%2345;&gt;n5 -->
+<g id="edge17" class="edge">
+<title>n1&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M113.67,-162C124.5,-162 138.21,-162 149.09,-162"/>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge20" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M167.5,-108.17C167.5,-119 167.5,-132.71 167.5,-143.59"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-158.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n3&%2345;&gt;n1 -->
+<g id="edge8" class="edge">
+<title>n3&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M41.67,-162C52.5,-162 66.21,-162 77.09,-162"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-86.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n3&%2345;&gt;n7 -->
+<g id="edge9" class="edge">
+<title>n3&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M36.37,-149.13C49.48,-136.02 69.67,-115.83 82.74,-102.76"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-14.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge3" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M36.37,-30.87C49.48,-43.98 69.67,-64.17 82.74,-77.24"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-14.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n4&%2345;&gt;n8 -->
+<g id="edge1" class="edge">
+<title>n4&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M41.67,-18C52.5,-18 66.21,-18 77.09,-18"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-86.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n4&%2345;&gt;n9 -->
+<g id="edge2" class="edge">
+<title>n4&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M23.5,-36.17C23.5,-47 23.5,-60.71 23.5,-71.59"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-14.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n6&%2345;&gt;n2 -->
+<g id="edge19" class="edge">
+<title>n6&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M167.5,-36.17C167.5,-47 167.5,-60.71 167.5,-71.59"/>
+</g>
+<!-- n7&%2345;&gt;n1 -->
+<g id="edge14" class="edge">
+<title>n7&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M95.5,-108.17C95.5,-119 95.5,-132.71 95.5,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n2 -->
+<g id="edge13" class="edge">
+<title>n7&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M113.67,-90C124.5,-90 138.21,-90 149.09,-90"/>
+</g>
+<!-- n7&%2345;&gt;n5 -->
+<g id="edge15" class="edge">
+<title>n7&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M108.37,-102.87C121.48,-115.98 141.67,-136.17 154.74,-149.24"/>
+</g>
+<!-- n7&%2345;&gt;n6 -->
+<g id="edge16" class="edge">
+<title>n7&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M108.37,-77.13C121.48,-64.02 141.67,-43.83 154.74,-30.76"/>
+</g>
+<!-- n8&%2345;&gt;n2 -->
+<g id="edge12" class="edge">
+<title>n8&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M108.37,-30.87C121.48,-43.98 141.67,-64.17 154.74,-77.24"/>
+</g>
+<!-- n8&%2345;&gt;n6 -->
+<g id="edge10" class="edge">
+<title>n8&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M113.67,-18C124.5,-18 138.21,-18 149.09,-18"/>
+</g>
+<!-- n8&%2345;&gt;n7 -->
+<g id="edge11" class="edge">
+<title>n8&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M95.5,-36.17C95.5,-47 95.5,-60.71 95.5,-71.59"/>
+</g>
+<!-- n9&%2345;&gt;n1 -->
+<g id="edge6" class="edge">
+<title>n9&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M36.37,-102.87C49.48,-115.98 69.67,-136.17 82.74,-149.24"/>
+</g>
+<!-- n9&%2345;&gt;n3 -->
+<g id="edge5" class="edge">
+<title>n9&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M23.5,-108.17C23.5,-119 23.5,-132.71 23.5,-143.59"/>
+</g>
+<!-- n9&%2345;&gt;n7 -->
+<g id="edge4" class="edge">
+<title>n9&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M41.67,-90C52.5,-90 66.21,-90 77.09,-90"/>
+</g>
+<!-- n9&%2345;&gt;n8 -->
+<g id="edge7" class="edge">
+<title>n9&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M36.37,-77.13C49.48,-64.02 69.67,-43.83 82.74,-30.76"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[9]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="199pt" height="211pt"
+ viewBox="0.00 0.00 199.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 195,-207 195,4 -4,4"/>
+<text text-anchor="middle" x="95.5" y="-187.8" font-family="Times,serif" font-size="14.00">Step 8 @ t=2.0: Event 2</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="23.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-86.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-158.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge6" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M36.37,-102.87C49.48,-115.98 69.67,-136.17 82.74,-149.24"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-158.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge5" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M23.5,-108.17C23.5,-119 23.5,-132.71 23.5,-143.59"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-86.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n1&%2345;&gt;n8 -->
+<g id="edge4" class="edge">
+<title>n1&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M41.67,-90C52.5,-90 66.21,-90 77.09,-90"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="green" stroke="black" cx="95.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-14.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n1&%2345;&gt;n9 -->
+<g id="edge7" class="edge">
+<title>n1&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M36.37,-77.13C49.48,-64.02 69.67,-43.83 82.74,-30.76"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="167.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-86.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge18" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M108.37,-149.13C121.48,-136.02 141.67,-115.83 154.74,-102.76"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-158.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n2&%2345;&gt;n6 -->
+<g id="edge17" class="edge">
+<title>n2&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M113.67,-162C124.5,-162 138.21,-162 149.09,-162"/>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge20" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M167.5,-108.17C167.5,-119 167.5,-132.71 167.5,-143.59"/>
+</g>
+<!-- n4&%2345;&gt;n2 -->
+<g id="edge8" class="edge">
+<title>n4&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M41.67,-162C52.5,-162 66.21,-162 77.09,-162"/>
+</g>
+<!-- n4&%2345;&gt;n8 -->
+<g id="edge9" class="edge">
+<title>n4&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M36.37,-149.13C49.48,-136.02 69.67,-115.83 82.74,-102.76"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-14.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n5&%2345;&gt;n1 -->
+<g id="edge2" class="edge">
+<title>n5&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M23.5,-36.17C23.5,-47 23.5,-60.71 23.5,-71.59"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge3" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M36.37,-30.87C49.48,-43.98 69.67,-64.17 82.74,-77.24"/>
+</g>
+<!-- n5&%2345;&gt;n9 -->
+<g id="edge1" class="edge">
+<title>n5&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M41.67,-18C52.5,-18 66.21,-18 77.09,-18"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-14.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n7&%2345;&gt;n3 -->
+<g id="edge19" class="edge">
+<title>n7&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M167.5,-36.17C167.5,-47 167.5,-60.71 167.5,-71.59"/>
+</g>
+<!-- n8&%2345;&gt;n2 -->
+<g id="edge14" class="edge">
+<title>n8&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M95.5,-108.17C95.5,-119 95.5,-132.71 95.5,-143.59"/>
+</g>
+<!-- n8&%2345;&gt;n3 -->
+<g id="edge13" class="edge">
+<title>n8&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M113.67,-90C124.5,-90 138.21,-90 149.09,-90"/>
+</g>
+<!-- n8&%2345;&gt;n6 -->
+<g id="edge15" class="edge">
+<title>n8&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M108.37,-102.87C121.48,-115.98 141.67,-136.17 154.74,-149.24"/>
+</g>
+<!-- n8&%2345;&gt;n7 -->
+<g id="edge16" class="edge">
+<title>n8&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M108.37,-77.13C121.48,-64.02 141.67,-43.83 154.74,-30.76"/>
+</g>
+<!-- n9&%2345;&gt;n3 -->
+<g id="edge12" class="edge">
+<title>n9&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M108.37,-30.87C121.48,-43.98 141.67,-64.17 154.74,-77.24"/>
+</g>
+<!-- n9&%2345;&gt;n7 -->
+<g id="edge10" class="edge">
+<title>n9&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M113.67,-18C124.5,-18 138.21,-18 149.09,-18"/>
+</g>
+<!-- n9&%2345;&gt;n8 -->
+<g id="edge11" class="edge">
+<title>n9&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M95.5,-36.17C95.5,-47 95.5,-60.71 95.5,-71.59"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[10]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="199pt" height="211pt"
+ viewBox="0.00 0.00 199.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 195,-207 195,4 -4,4"/>
+<text text-anchor="middle" x="95.5" y="-187.8" font-family="Times,serif" font-size="14.00">Step 9 @ t=2.0: Event 2</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="red" stroke="black" cx="167.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-86.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge12" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M108.37,-30.87C121.48,-43.98 141.67,-64.17 154.74,-77.24"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-14.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n1&%2345;&gt;n8 -->
+<g id="edge10" class="edge">
+<title>n1&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M113.67,-18C124.5,-18 138.21,-18 149.09,-18"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-86.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n1&%2345;&gt;n9 -->
+<g id="edge11" class="edge">
+<title>n1&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M95.5,-36.17C95.5,-47 95.5,-60.71 95.5,-71.59"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="23.5" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-86.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge7" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M36.37,-77.13C49.48,-64.02 69.67,-43.83 82.74,-30.76"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="95.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="95.5" y="-158.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge6" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M36.37,-102.87C49.48,-115.98 69.67,-136.17 82.74,-149.24"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-158.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge5" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M23.5,-108.17C23.5,-119 23.5,-132.71 23.5,-143.59"/>
+</g>
+<!-- n2&%2345;&gt;n9 -->
+<g id="edge4" class="edge">
+<title>n2&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M41.67,-90C52.5,-90 66.21,-90 77.09,-90"/>
+</g>
+<!-- n3&%2345;&gt;n4 -->
+<g id="edge18" class="edge">
+<title>n3&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M108.37,-149.13C121.48,-136.02 141.67,-115.83 154.74,-102.76"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="green" stroke="black" cx="167.5" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="167.5" y="-158.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n3&%2345;&gt;n7 -->
+<g id="edge17" class="edge">
+<title>n3&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M113.67,-162C124.5,-162 138.21,-162 149.09,-162"/>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge20" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M167.5,-108.17C167.5,-119 167.5,-132.71 167.5,-143.59"/>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge8" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M41.67,-162C52.5,-162 66.21,-162 77.09,-162"/>
+</g>
+<!-- n5&%2345;&gt;n9 -->
+<g id="edge9" class="edge">
+<title>n5&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M36.37,-149.13C49.48,-136.02 69.67,-115.83 82.74,-102.76"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="23.5" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="23.5" y="-14.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n6&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n6&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M41.67,-18C52.5,-18 66.21,-18 77.09,-18"/>
+</g>
+<!-- n6&%2345;&gt;n2 -->
+<g id="edge2" class="edge">
+<title>n6&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M23.5,-36.17C23.5,-47 23.5,-60.71 23.5,-71.59"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge3" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M36.37,-30.87C49.48,-43.98 69.67,-64.17 82.74,-77.24"/>
+</g>
+<!-- n8&%2345;&gt;n4 -->
+<g id="edge19" class="edge">
+<title>n8&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M167.5,-36.17C167.5,-47 167.5,-60.71 167.5,-71.59"/>
+</g>
+<!-- n9&%2345;&gt;n3 -->
+<g id="edge14" class="edge">
+<title>n9&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M95.5,-108.17C95.5,-119 95.5,-132.71 95.5,-143.59"/>
+</g>
+<!-- n9&%2345;&gt;n4 -->
+<g id="edge13" class="edge">
+<title>n9&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M113.67,-90C124.5,-90 138.21,-90 149.09,-90"/>
+</g>
+<!-- n9&%2345;&gt;n7 -->
+<g id="edge15" class="edge">
+<title>n9&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M108.37,-102.87C121.48,-115.98 141.67,-136.17 154.74,-149.24"/>
+</g>
+<!-- n9&%2345;&gt;n8 -->
+<g id="edge16" class="edge">
+<title>n9&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M108.37,-77.13C121.48,-64.02 141.67,-43.83 154.74,-30.76"/>
+</g>
+</g>
+</svg>
+'/><p>In the last step, the remaining four living cells perish due to underpopulation.</p><pre><code class="language-julia hljs">imgs[11]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="208pt" height="211pt"
+ viewBox="0.00 0.00 208.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 204,-207 204,4 -4,4"/>
+<text text-anchor="middle" x="100" y="-187.8" font-family="Times,serif" font-size="14.00">Step 10 @ t=3.0: Event 1</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="172" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="red" stroke="black" cx="172" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-86.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n1&%2345;&gt;n5 -->
+<g id="edge19" class="edge">
+<title>n1&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M172,-36.17C172,-47 172,-60.71 172,-71.59"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge10" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M118.17,-18C129,-18 142.71,-18 153.59,-18"/>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge12" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M112.87,-30.87C125.98,-43.98 146.17,-64.17 159.24,-77.24"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-86.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n2&%2345;&gt;n9 -->
+<g id="edge11" class="edge">
+<title>n2&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M100,-36.17C100,-47 100,-60.71 100,-71.59"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="28" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-86.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n3&%2345;&gt;n2 -->
+<g id="edge7" class="edge">
+<title>n3&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M40.87,-77.13C53.98,-64.02 74.17,-43.83 87.24,-30.76"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-158.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n3&%2345;&gt;n4 -->
+<g id="edge6" class="edge">
+<title>n3&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M40.87,-102.87C53.98,-115.98 74.17,-136.17 87.24,-149.24"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="green" stroke="black" cx="28" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-158.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge5" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M28,-108.17C28,-119 28,-132.71 28,-143.59"/>
+</g>
+<!-- n3&%2345;&gt;n9 -->
+<g id="edge4" class="edge">
+<title>n3&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M46.17,-90C57,-90 70.71,-90 81.59,-90"/>
+</g>
+<!-- n4&%2345;&gt;n5 -->
+<g id="edge18" class="edge">
+<title>n4&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M112.87,-149.13C125.98,-136.02 146.17,-115.83 159.24,-102.76"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="172" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n4&%2345;&gt;n8 -->
+<g id="edge17" class="edge">
+<title>n4&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M118.17,-162C129,-162 142.71,-162 153.59,-162"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge20" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M172,-108.17C172,-119 172,-132.71 172,-143.59"/>
+</g>
+<!-- n6&%2345;&gt;n4 -->
+<g id="edge8" class="edge">
+<title>n6&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M46.17,-162C57,-162 70.71,-162 81.59,-162"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge9" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M40.87,-149.13C53.98,-136.02 74.17,-115.83 87.24,-102.76"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="green" stroke="black" cx="28" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-14.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n7&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n7&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M46.17,-18C57,-18 70.71,-18 81.59,-18"/>
+</g>
+<!-- n7&%2345;&gt;n3 -->
+<g id="edge2" class="edge">
+<title>n7&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M28,-36.17C28,-47 28,-60.71 28,-71.59"/>
+</g>
+<!-- n7&%2345;&gt;n9 -->
+<g id="edge3" class="edge">
+<title>n7&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M40.87,-30.87C53.98,-43.98 74.17,-64.17 87.24,-77.24"/>
+</g>
+<!-- n9&%2345;&gt;n1 -->
+<g id="edge16" class="edge">
+<title>n9&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M112.87,-77.13C125.98,-64.02 146.17,-43.83 159.24,-30.76"/>
+</g>
+<!-- n9&%2345;&gt;n4 -->
+<g id="edge14" class="edge">
+<title>n9&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M100,-108.17C100,-119 100,-132.71 100,-143.59"/>
+</g>
+<!-- n9&%2345;&gt;n5 -->
+<g id="edge13" class="edge">
+<title>n9&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M118.17,-90C129,-90 142.71,-90 153.59,-90"/>
+</g>
+<!-- n9&%2345;&gt;n8 -->
+<g id="edge15" class="edge">
+<title>n9&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M112.87,-102.87C125.98,-115.98 146.17,-136.17 159.24,-149.24"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[12]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="208pt" height="211pt"
+ viewBox="0.00 0.00 208.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 204,-207 204,4 -4,4"/>
+<text text-anchor="middle" x="100" y="-187.8" font-family="Times,serif" font-size="14.00">Step 11 @ t=3.0: Event 1</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="28" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-14.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n1&%2345;&gt;n3 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M46.17,-18C57,-18 70.71,-18 81.59,-18"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="red" stroke="black" cx="28" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-86.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge2" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M28,-36.17C28,-47 28,-60.71 28,-71.59"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-86.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n1&%2345;&gt;n9 -->
+<g id="edge3" class="edge">
+<title>n1&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M40.87,-30.87C53.98,-43.98 74.17,-64.17 87.24,-77.24"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="172" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="red" stroke="black" cx="172" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n2&%2345;&gt;n6 -->
+<g id="edge19" class="edge">
+<title>n2&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M172,-36.17C172,-47 172,-60.71 172,-71.59"/>
+</g>
+<!-- n3&%2345;&gt;n2 -->
+<g id="edge10" class="edge">
+<title>n3&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M118.17,-18C129,-18 142.71,-18 153.59,-18"/>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge12" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M112.87,-30.87C125.98,-43.98 146.17,-64.17 159.24,-77.24"/>
+</g>
+<!-- n3&%2345;&gt;n9 -->
+<g id="edge11" class="edge">
+<title>n3&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M100,-36.17C100,-47 100,-60.71 100,-71.59"/>
+</g>
+<!-- n4&%2345;&gt;n3 -->
+<g id="edge7" class="edge">
+<title>n4&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M40.87,-77.13C53.98,-64.02 74.17,-43.83 87.24,-30.76"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-158.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n4&%2345;&gt;n5 -->
+<g id="edge6" class="edge">
+<title>n4&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M40.87,-102.87C53.98,-115.98 74.17,-136.17 87.24,-149.24"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="green" stroke="black" cx="28" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-158.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge5" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M28,-108.17C28,-119 28,-132.71 28,-143.59"/>
+</g>
+<!-- n4&%2345;&gt;n9 -->
+<g id="edge4" class="edge">
+<title>n4&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M46.17,-90C57,-90 70.71,-90 81.59,-90"/>
+</g>
+<!-- n5&%2345;&gt;n6 -->
+<g id="edge18" class="edge">
+<title>n5&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M112.87,-149.13C125.98,-136.02 146.17,-115.83 159.24,-102.76"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="172" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge17" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M118.17,-162C129,-162 142.71,-162 153.59,-162"/>
+</g>
+<!-- n6&%2345;&gt;n8 -->
+<g id="edge20" class="edge">
+<title>n6&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M172,-108.17C172,-119 172,-132.71 172,-143.59"/>
+</g>
+<!-- n7&%2345;&gt;n5 -->
+<g id="edge8" class="edge">
+<title>n7&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M46.17,-162C57,-162 70.71,-162 81.59,-162"/>
+</g>
+<!-- n7&%2345;&gt;n9 -->
+<g id="edge9" class="edge">
+<title>n7&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M40.87,-149.13C53.98,-136.02 74.17,-115.83 87.24,-102.76"/>
+</g>
+<!-- n9&%2345;&gt;n2 -->
+<g id="edge16" class="edge">
+<title>n9&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M112.87,-77.13C125.98,-64.02 146.17,-43.83 159.24,-30.76"/>
+</g>
+<!-- n9&%2345;&gt;n5 -->
+<g id="edge14" class="edge">
+<title>n9&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M100,-108.17C100,-119 100,-132.71 100,-143.59"/>
+</g>
+<!-- n9&%2345;&gt;n6 -->
+<g id="edge13" class="edge">
+<title>n9&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M118.17,-90C129,-90 142.71,-90 153.59,-90"/>
+</g>
+<!-- n9&%2345;&gt;n8 -->
+<g id="edge15" class="edge">
+<title>n9&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M112.87,-102.87C125.98,-115.98 146.17,-136.17 159.24,-149.24"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[13]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="208pt" height="211pt"
+ viewBox="0.00 0.00 208.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 204,-207 204,4 -4,4"/>
+<text text-anchor="middle" x="100" y="-187.8" font-family="Times,serif" font-size="14.00">Step 12 @ t=3.0: Event 1</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="28" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-158.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-158.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n1&%2345;&gt;n6 -->
+<g id="edge8" class="edge">
+<title>n1&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M46.17,-162C57,-162 70.71,-162 81.59,-162"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-86.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n1&%2345;&gt;n9 -->
+<g id="edge9" class="edge">
+<title>n1&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M40.87,-149.13C53.98,-136.02 74.17,-115.83 87.24,-102.76"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="28" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-14.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-14.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n2&%2345;&gt;n4 -->
+<g id="edge1" class="edge">
+<title>n2&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M46.17,-18C57,-18 70.71,-18 81.59,-18"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="red" stroke="black" cx="28" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-86.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M28,-36.17C28,-47 28,-60.71 28,-71.59"/>
+</g>
+<!-- n2&%2345;&gt;n9 -->
+<g id="edge3" class="edge">
+<title>n2&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M40.87,-30.87C53.98,-43.98 74.17,-64.17 87.24,-77.24"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="172" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="red" stroke="black" cx="172" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-86.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n3&%2345;&gt;n7 -->
+<g id="edge19" class="edge">
+<title>n3&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M172,-36.17C172,-47 172,-60.71 172,-71.59"/>
+</g>
+<!-- n4&%2345;&gt;n3 -->
+<g id="edge10" class="edge">
+<title>n4&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M118.17,-18C129,-18 142.71,-18 153.59,-18"/>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge12" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M112.87,-30.87C125.98,-43.98 146.17,-64.17 159.24,-77.24"/>
+</g>
+<!-- n4&%2345;&gt;n9 -->
+<g id="edge11" class="edge">
+<title>n4&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M100,-36.17C100,-47 100,-60.71 100,-71.59"/>
+</g>
+<!-- n5&%2345;&gt;n1 -->
+<g id="edge5" class="edge">
+<title>n5&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M28,-108.17C28,-119 28,-132.71 28,-143.59"/>
+</g>
+<!-- n5&%2345;&gt;n4 -->
+<g id="edge7" class="edge">
+<title>n5&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M40.87,-77.13C53.98,-64.02 74.17,-43.83 87.24,-30.76"/>
+</g>
+<!-- n5&%2345;&gt;n6 -->
+<g id="edge6" class="edge">
+<title>n5&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M40.87,-102.87C53.98,-115.98 74.17,-136.17 87.24,-149.24"/>
+</g>
+<!-- n5&%2345;&gt;n9 -->
+<g id="edge4" class="edge">
+<title>n5&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M46.17,-90C57,-90 70.71,-90 81.59,-90"/>
+</g>
+<!-- n6&%2345;&gt;n7 -->
+<g id="edge18" class="edge">
+<title>n6&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M112.87,-149.13C125.98,-136.02 146.17,-115.83 159.24,-102.76"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="green" stroke="black" cx="172" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-158.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n6&%2345;&gt;n8 -->
+<g id="edge17" class="edge">
+<title>n6&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M118.17,-162C129,-162 142.71,-162 153.59,-162"/>
+</g>
+<!-- n7&%2345;&gt;n8 -->
+<g id="edge20" class="edge">
+<title>n7&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M172,-108.17C172,-119 172,-132.71 172,-143.59"/>
+</g>
+<!-- n9&%2345;&gt;n3 -->
+<g id="edge16" class="edge">
+<title>n9&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M112.87,-77.13C125.98,-64.02 146.17,-43.83 159.24,-30.76"/>
+</g>
+<!-- n9&%2345;&gt;n6 -->
+<g id="edge14" class="edge">
+<title>n9&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M100,-108.17C100,-119 100,-132.71 100,-143.59"/>
+</g>
+<!-- n9&%2345;&gt;n7 -->
+<g id="edge13" class="edge">
+<title>n9&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M118.17,-90C129,-90 142.71,-90 153.59,-90"/>
+</g>
+<!-- n9&%2345;&gt;n8 -->
+<g id="edge15" class="edge">
+<title>n9&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M112.87,-102.87C125.98,-115.98 146.17,-136.17 159.24,-149.24"/>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">imgs[14]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="208pt" height="211pt"
+ viewBox="0.00 0.00 208.00 211.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 207)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-207 204,-207 204,4 -4,4"/>
+<text text-anchor="middle" x="100" y="-187.8" font-family="Times,serif" font-size="14.00">Step 13 @ t=3.0: Event 1</text>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="red" stroke="black" cx="172" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-158.3" font-family="Times,serif" font-size="14.00">n1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="red" stroke="black" cx="28" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-158.3" font-family="Times,serif" font-size="14.00">n2</text>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-162" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-158.3" font-family="Times,serif" font-size="14.00">n7</text>
+</g>
+<!-- n2&%2345;&gt;n7 -->
+<g id="edge8" class="edge">
+<title>n2&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M46.17,-162C57,-162 70.71,-162 81.59,-162"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-86.3" font-family="Times,serif" font-size="14.00">n9</text>
+</g>
+<!-- n2&%2345;&gt;n9 -->
+<g id="edge9" class="edge">
+<title>n2&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M40.87,-149.13C53.98,-136.02 74.17,-115.83 87.24,-102.76"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="red" stroke="black" cx="28" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-14.3" font-family="Times,serif" font-size="14.00">n3</text>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="red" stroke="black" cx="100" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-14.3" font-family="Times,serif" font-size="14.00">n5</text>
+</g>
+<!-- n3&%2345;&gt;n5 -->
+<g id="edge1" class="edge">
+<title>n3&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M46.17,-18C57,-18 70.71,-18 81.59,-18"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="red" stroke="black" cx="28" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="28" y="-86.3" font-family="Times,serif" font-size="14.00">n6</text>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge2" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M28,-36.17C28,-47 28,-60.71 28,-71.59"/>
+</g>
+<!-- n3&%2345;&gt;n9 -->
+<g id="edge3" class="edge">
+<title>n3&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M40.87,-30.87C53.98,-43.98 74.17,-64.17 87.24,-77.24"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="red" stroke="black" cx="172" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-14.3" font-family="Times,serif" font-size="14.00">n4</text>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="red" stroke="black" cx="172" cy="-90" rx="18" ry="18"/>
+<text text-anchor="middle" x="172" y="-86.3" font-family="Times,serif" font-size="14.00">n8</text>
+</g>
+<!-- n4&%2345;&gt;n8 -->
+<g id="edge19" class="edge">
+<title>n4&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M172,-36.17C172,-47 172,-60.71 172,-71.59"/>
+</g>
+<!-- n5&%2345;&gt;n4 -->
+<g id="edge10" class="edge">
+<title>n5&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M118.17,-18C129,-18 142.71,-18 153.59,-18"/>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge12" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M112.87,-30.87C125.98,-43.98 146.17,-64.17 159.24,-77.24"/>
+</g>
+<!-- n5&%2345;&gt;n9 -->
+<g id="edge11" class="edge">
+<title>n5&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M100,-36.17C100,-47 100,-60.71 100,-71.59"/>
+</g>
+<!-- n6&%2345;&gt;n2 -->
+<g id="edge5" class="edge">
+<title>n6&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M28,-108.17C28,-119 28,-132.71 28,-143.59"/>
+</g>
+<!-- n6&%2345;&gt;n5 -->
+<g id="edge7" class="edge">
+<title>n6&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M40.87,-77.13C53.98,-64.02 74.17,-43.83 87.24,-30.76"/>
+</g>
+<!-- n6&%2345;&gt;n7 -->
+<g id="edge6" class="edge">
+<title>n6&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M40.87,-102.87C53.98,-115.98 74.17,-136.17 87.24,-149.24"/>
+</g>
+<!-- n6&%2345;&gt;n9 -->
+<g id="edge4" class="edge">
+<title>n6&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M46.17,-90C57,-90 70.71,-90 81.59,-90"/>
+</g>
+<!-- n7&%2345;&gt;n1 -->
+<g id="edge17" class="edge">
+<title>n7&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M118.17,-162C129,-162 142.71,-162 153.59,-162"/>
+</g>
+<!-- n7&%2345;&gt;n8 -->
+<g id="edge18" class="edge">
+<title>n7&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M112.87,-149.13C125.98,-136.02 146.17,-115.83 159.24,-102.76"/>
+</g>
+<!-- n8&%2345;&gt;n1 -->
+<g id="edge20" class="edge">
+<title>n8&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M172,-108.17C172,-119 172,-132.71 172,-143.59"/>
+</g>
+<!-- n9&%2345;&gt;n1 -->
+<g id="edge15" class="edge">
+<title>n9&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M112.87,-102.87C125.98,-115.98 146.17,-136.17 159.24,-149.24"/>
+</g>
+<!-- n9&%2345;&gt;n4 -->
+<g id="edge16" class="edge">
+<title>n9&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M112.87,-77.13C125.98,-64.02 146.17,-43.83 159.24,-30.76"/>
+</g>
+<!-- n9&%2345;&gt;n7 -->
+<g id="edge14" class="edge">
+<title>n9&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M100,-108.17C100,-119 100,-132.71 100,-143.59"/>
+</g>
+<!-- n9&%2345;&gt;n8 -->
+<g id="edge13" class="edge">
+<title>n9&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M118.17,-90C129,-90 142.71,-90 153.59,-90"/>
+</g>
+</g>
+</svg>
+'/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../sir_petri/">« Petri-net based ABMs</a><a class="docs-footer-nextpage" href="../../api/">Library Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Sunday 2 June 2024 02:30">Sunday 2 June 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

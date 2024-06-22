@@ -62,5 +62,31 @@ create_vert = ABMRule(Rule(id(Graph()),  create(Graph(1))), DiscreteHazard(1.));
 abm = ABM([create_loop, create_vert]);
 traj = run!(abm, Graph(); maxtime=5);
 
+# ODEs
+######
+using AlgebraicABMs, AlgebraicRewriting, Catlab
+
+# State of world: a set of free-floating Float64s 
+@present SchLSet(FreeSchema) begin X::Ob; D::AttrType; f::Attr(X, D) end 
+@acset_type LSet(SchLSet){Float64} 
+
+# Rule: copy a variable
+v = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end
+v2 = @acset LSet begin X=2; D=1; f=[AttrVar(1), AttrVar(1)] end
+dup_vertex = ABMRule(Rule(id(v), homomorphism(v, v2)), DiscreteHazard(1.))
+
+# Dynamics: for an individual variable, it grows linearly w/ time
+flow = ABMFlow(v, RawODE([_ -> 1.0]), :Grow, [(:D => 1)])
+# Make ABM
+abm = ABM([dup_vertex], [flow])
+
+# Initial state
+init = @acset LSet begin X=2; f=[1.1, 2.2] end
+
+# res = run!(abm, init, maxevent=2)
+
+
+
+
 
 end # module

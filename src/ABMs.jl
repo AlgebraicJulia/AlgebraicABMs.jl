@@ -2,10 +2,11 @@
 module ABMs
 
 export ABM, ABMRule, run!, DiscreteHazard, ContinuousHazard, FullClosure, 
-       ClosureState, ClosureTime
+       ClosureState, ClosureTime, RawODE, ABMFlow
 
 using Distributions, CompetingClocks, Random
 using DataStructures: DefaultDict
+using DifferentialEquations: ODEProblem
 using StructEquality
 
 using Catlab, AlgebraicRewriting
@@ -140,9 +141,8 @@ Even if the pattern is a coproduct of representables, we cannot use the
 efficient encoding unless the distribution is either an exponential 
 (or a single dirac delta - not yet supported).
 """
-function pattern_type(r::Rule, is_exp::Bool; schema=nothing)
+function pattern_type(r::Rule, is_exp::Bool)
   p = pattern(r)
-  S = isnothing(schema) ? acset_schema(p) : schema
   
   # Check empty case
   isempty(p) && return EmptyP()
@@ -150,7 +150,7 @@ function pattern_type(r::Rule, is_exp::Bool; schema=nothing)
   # Determine if pattern is a coproduct of representables
   if is_exp
     repr_loc = DefaultDict{Symbol, Vector{Int}}(() -> Int[])
-    reprs = repr_dict(typeof(p), Presentation(S))
+    reprs = repr_dict(typeof(p))
     ccs, iso′ = connected_acset_components(p)
     iso = invert_iso(iso′)
     for cc_leg in legs(ccs)
@@ -203,8 +203,8 @@ A stochastic rewrite rule with a dependent hazard rate
   timer::AbsTimer 
   name::Maybe{Symbol}
   pattern_type::PatternType
-  ABMRule(r::Rule, t::AbsTimer; name=nothing, schema=nothing) = 
-    new(r, t, name, pattern_type(r, is_exp(t); schema))
+  ABMRule(r::Rule, t::AbsTimer; name=nothing) = 
+    new(r, t, name, pattern_type(r, is_exp(t)))
 end
 
 # Give name as first arg rather than as kwarg
@@ -227,7 +227,7 @@ get_matches(r::ABMRule, args...; kw...) =
   get_matches(getrule(r), args...; kw...)
 
 (F::Migrate)(r::ABMRule) = 
-  ABMRule(F(r.rule), r.timer; name=r.name, schema=F.delta ? F.P1 : F.P2)
+  ABMRule(F(r.rule), r.timer; name=r.name)
 
 """
 A type which implements AbsDynamics must be able to compiled to an ODE for some 
@@ -235,9 +235,9 @@ set of variables.
 """
 abstract type AbsDynamics end 
 
-"""Use a Stock Flow diagram (possibly this could be in a package extension)"""
-@struct_hash_equal struct StockFlowDynamics <: AbsDynamics 
-  val::Any # TODO: integrate with StockFlow.jl. 
+"""Use raw Julia functions to define an ODE"""
+@struct_hash_equal struct RawODE <: AbsDynamics 
+  dynam::Vector{Function}
 end
 
 """Continuous dynamics"""
@@ -259,19 +259,15 @@ An agent-based model.
   rules::Vector{ABMRule}
   dyn::Vector{ABMFlow}
   names::Dict{Symbol, Int}
-  schema::Union{Nothing, Presentation}
-  function ABM(rules, dyn=[]; schema=nothing) 
+  function ABM(rules, dyn=[]) 
     names = Dict(n=>i for (i,n) in enumerate(nameof.(rules)) if !isnothing(n))
-    new(rules, dyn, names, schema)
+    new(rules, dyn, names)
   end
 end
 
-ABM(schema::Presentation, rules::Vector{ABMRule}, dyn=[]) = 
-  ABM(rules, dyn; schema)
-
 additions(abm::ABM) = right.(abm.rules)
 
-(F::Migrate)(abm::ABM) = ABM(F.delta ? F.P1 : F.P2, F.(abm.rules), abm.dyn)
+(F::Migrate)(abm::ABM) = ABM(F.(abm.rules), abm.dyn)
 
 Base.getindex(abm::ABM, i::Int) = abm.rules[i]
 Base.getindex(abm::ABM, n::Symbol) = abm.rules[abm.names[n]]
@@ -303,11 +299,11 @@ addition!(h::ExplicitHomSet, k, r, u) = addition!(h.val, k, r, u)
 
 """Initialize runtime hom-set given the rule and the initial state"""
 function init_homset(rule::ABMRule, state::ACSet, 
-                     additions::Vector{<:ACSetTransformation}, S::Union{Nothing,Presentation})
+                     additions::Vector{<:ACSetTransformation})
   p, sd = pattern_type(rule), state_dep(rule.timer)
   p == EmptyP() && return EmptyHomSet()
   (sd || p == RegularP()  
-   ) && return ExplicitHomSet(IncHomSet(getrule(rule), state,  additions, S))
+   ) && return ExplicitHomSet(IncHomSet(getrule(rule), state,  additions))
   @assert p isa RepresentableP  "$(typeof(p))"
   return RepresentableHomSet()
 end 
@@ -329,13 +325,17 @@ mutable struct RuntimeABM
   const sampler::SSA # stochastic simulation algorithm
   const rng::Distributions.AbstractRNG
   const names::Dict{Symbol, Int}
+  const prob::ODEProblem
+  const probmap::Vector{Pair{Symbol, Int}}
+  const probdict::Dict{Symbol, Dict{Int, Int}}
+
   function RuntimeABM(abm::ABM, init::T; sampler=default_sampler) where T<:ACSet
     # Create the runtime
     names = Dict(r => i for (i, r) in enumerate(nameof.(abm.rules))
                  if !isnothing(r))
-    rt = new(init, init_homset.(abm.rules, Ref(init), Ref(additions(abm)), 
-                                Ref(abm.schema)), 
-             0., 0, sampler(), Random.RandomDevice(), names)
+    rt = new(init, init_homset.(abm.rules, Ref(init), Ref(additions(abm))), 
+             0., 0, sampler(), Random.RandomDevice(), names, 
+             mk_prob(abm, init)...)
     # Initialize the firing queue
     for (i, (pat,homset)) in enumerate(zip(pattern_type.(abm.rules), rt.clocks))
       kv = if homset isa ExplicitHomSet 
@@ -365,6 +365,14 @@ Base.haskey(rt::RuntimeABM, k::Int) =
 
 Base.getindex(rt::RuntimeABM, i::Int) = rt.clocks[i]
 Base.getindex(rt::RuntimeABM, n::Symbol) = rt.clocks[rt.names[n]]
+
+"""
+Construct an ODE for a given ACSet state. Return a mapping which allows to go from index to AttrType+index. 
+"""
+function mk_prob(abm::ABM, state::ACSet)
+  isempty(abm.dyn) && return (ODEProblem((_,_,_,_)->0, 0, (0.,1.)), [], Dict())
+  error("HERE")
+end
 
 """
 Check that RuntimeABM incremental hom sets have all valid homs.
@@ -404,14 +412,15 @@ A trajectory of an ABM: each event time and result of `save`.
 """
 @struct_hash_equal struct Traj
   init::ACSet
-  events::Vector{Tuple{Float64, Int, Any}}
+  events::Vector{Tuple{Float64, Int, String, Any}}
   hist::Vector{Span{<:ACSet}}
 end
 
-Traj(x::ACSet) = Traj(x, Pair{Float64, Any}[], Span{ACSet}[])
+Traj(x::ACSet) = Traj(x, Tuple{Float64, Int, String, Any}[], Span{ACSet}[])
 
-function Base.push!(t::Traj, τ::Float64,rule::Int, v::Any, sp::Span{<:ACSet}) 
-  push!(t.events, (τ, rule, v))
+function Base.push!(t::Traj, tup::Tuple{Float64,Int,String,Any,Span{<:ACSet}}) 
+  (τ, rule, rulename, v, sp) = tup
+  push!(t.events, (τ, rule, rulename, v))
   isempty(t.hist) || codom(left(sp)) == codom(right(last(t.hist))) || error(
     "Bad history \n$(codom(left(sp))) \n!= \n$(codom(right(last(t.hist))))"
   )
@@ -426,6 +435,9 @@ const MAXEVENT = 100
 
 """
 Run an ABM, creating a fresh runtime + trajectory.
+
+save - function applied to the ACSet state to produce the data that gets stored for every change in the model
+dt - timestep for checking discrete events when running ODE dynamics.
 """
 function run!(abm::ABM, init::T; save=_->nothing, maxevent=MAXEVENT, 
               maxtime=Inf, kw...) where T<:ACSet 
@@ -434,10 +446,13 @@ function run!(abm::ABM, init::T; save=_->nothing, maxevent=MAXEVENT,
 end
 
 function run!(abm::ABM, rt::RuntimeABM, output::Traj;
-              save=_->nothing, maxevent=MAXEVENT, maxtime=Inf)
+              save=_->nothing, maxevent=MAXEVENT, maxtime=Inf, dt=0.1)
   maxevent = isinf(maxtime) ? maxevent : typemax(Int)
   # Helper functions that automatically incorporate the runtime `rt`
-  log!(rule::Int, sp::Span) = push!(output, rt.tnow, rule, save(rt.state), sp)
+  getname(rule::Int)::String = 
+    string(isnothing(abm.rules[rule].name) ? rule : abm.rules[rule].name)
+  log!(rule::Int, sp::Span) = 
+    push!(output, (rt.tnow, rule, getname(rule), save(rt.state), sp))
   disable!′(key::Pair) = disable!(rt.sampler, key, rt.tnow)
   disable!′(i::Int) = disable!′(i => nothing)
   function enable!′(m::ACSetTransformation, rule_id::Int, key=nothing) 
@@ -448,93 +463,99 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
 
   # Main loop
   while rt.nevent < maxevent && rt.tnow < maxtime
-    if length(rt.sampler) == 0 
+    # TODO: isempty(abm.dyn) should be check that all flows sum to 0 
+    if length(rt.sampler) == 0 && isempty(abm.dyn)
       @info "Stochastic scheduling algorithm ran out of events"
       return output
     end
 
-    # Get next event + unpack data
-    events::Vector{Pair{Int,Maybe{KeyType}}} = pops!(rt) # updates the clock time
-    N = length(rt.sampler)
+    new_time = first(next(rt.sampler, rt.tnow, rt.rng))
+    if !isempty(abm.dyn) && dt < new_time 
+      error("HERE")
+    else  
+      # Get next event + unpack data
+      events::Vector{Pair{Int,Maybe{KeyType}}} = pops!(rt) # updates the clock time
+      N = length(rt.sampler)
 
-    s = length(events) > 1 ? "s" : ""
-    rname(e) = let r = first(e); n = abm.rules[r].name; isnothing(n) ? r : n end
-    @debug ("Step $(length(output)): Event$s $(join(string.(rname.(events)), ", "))"
-            *" | Fired @ t = $(round(rt.tnow, digits=2)) ($N queued)")
+      s = length(events) > 1 ? "s" : ""
+      rname(e) = let r = first(e); n = abm.rules[r].name; isnothing(n) ? r : n end
+      @debug ("Step $(length(output)): Event$s $(join(string.(rname.(events)), ", "))"
+              *" | Fired @ t = $(round(rt.tnow, digits=2)) ($N queued)")
 
-    # TODO some sort of check that the events are consistent with each other
-    # or a randomization of their order
+      # TODO some sort of check that the events are consistent with each other
+      # or a randomization of their order
 
-    update_data = [] # use to update incremental hom sets afterwards
-    # execute all the events
-    for (event, key) in events
-      rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
-      rule′::Rule, rule_type::Symbol = getrule(rule), ruletype(rule)
-      # If RegularPattern, we have an explicit match, otherwise randomly pick one
-      m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
-      # bring the match 'up to speed' given the previous (simultanous) updates
-      for (l, r) in first.(update_data)
-        m = pull_back(l, m) ⋅ r
-      end
-      dpo = rule_type == :DPO ? (left(rule′), m) : nothing
-
-      # Excute rewrite rule and unpack results
-      rw_result = (rule_type, rewrite_match_maps(rule′, m))
-      rmap_ = get_rmap(rw_result...)
-      xmap = get_expr_binding_map(rule′, m, rw_result[2])
-      (lft, rght_) = get_pmap(rw_result...)
-      rmap, rght = compose.([rmap_,rght_], Ref(xmap))
-      pmap = Span(lft, rght)
-      rt.state = codom(rmap) # update runtime state
-      log!(event, pmap)      # record event result
-      push!(update_data, (pmap, rmap, dpo, right(rule′)))
-    end
-
-    # All other rules can potentially update in response to the current event
-    for (i, (ruleᵢ, clocksᵢ)) in enumerate(zip(abm.rules, rt.clocks))
-      pt = pattern_type(ruleᵢ)
-      if pt == EmptyP() && i ∈ first.(events)
-        enable!′(create(rt.state), i)
-      elseif pt == RegularP() # update explicit hom-set w/r/t span Xₙ ↩ • -> Xₙ₊₁
-        for ((lft, rght), rmap, dpo, rule_right) in update_data
-          del_invalid, del_new = deletion!(clocksᵢ, lft; dpo)
-
-          for d in del_invalid # disable clocks which are invalidated
-            (i=>d) ∈ events || disable!′(i => d) # (event,key) already diabled
-          end
-
-          for a in del_new
-            enable!′(clocksᵢ[a], i, a) 
-          end
-          add_invalid, add_new = addition!(clocksᵢ, rule_right, rmap, rght)
-
-          for d in add_invalid # disable clocks which are invalidated
-            (i=>d) ∈ (events) || disable!′(i => d) # (event,key) already diabled
-          end
-          for a in add_new
-            enable!′(clocksᵢ[a], i, a) 
-          end
+      update_data = [] # use to update incremental hom sets afterwards
+      # execute all the events
+      for (event, key) in events
+        rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
+        rule′::Rule, rule_type::Symbol = getrule(rule), ruletype(rule)
+        # If RegularPattern, we have an explicit match, otherwise randomly pick one
+        m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
+        # bring the match 'up to speed' given the previous (simultanous) updates
+        for (l, r) in first.(update_data)
+          m = pull_back(l, m) ⋅ r
         end
-      elseif pt isa RepresentableP
-        relevant_obs = keys(pt)
-        Xs = left(first(first(update_data))), right(first(last(update_data)))
-        # we need to update current timer if # of parts has changed
-        if i ∈ first.(events) && all(>(0), nparts.(Ref(rt.state), relevant_obs))
+        dpo = rule_type == :DPO ? (left(rule′), m) : nothing
+
+        # Excute rewrite rule and unpack results
+        rw_result = (rule_type, rewrite_match_maps(rule′, m))
+        rmap_ = get_rmap(rw_result...)
+        xmap = get_expr_binding_map(rule′, m, rw_result[2])
+        (lft, rght_) = get_pmap(rw_result...)
+        rmap, rght = compose.([rmap_,rght_], Ref(xmap))
+        pmap = Span(lft, rght)
+        rt.state = codom(rmap) # update runtime state
+        log!(event, pmap)      # record event result
+        push!(update_data, (pmap, rmap, dpo, right(rule′)))
+      end
+
+      # All other rules can potentially update in response to the current event
+      for (i, (ruleᵢ, clocksᵢ)) in enumerate(zip(abm.rules, rt.clocks))
+        pt = pattern_type(ruleᵢ)
+        if pt == EmptyP() && i ∈ first.(events)
           enable!′(create(rt.state), i)
-        elseif !all(ob -> allequal(nparts.(codom.(Xs), ob)), relevant_obs)
-          currently_enabled = haskey(rt, i)
-          currently_enabled && disable!′(i) # Disable if active
-          # enable new timer if possible to apply rule
-          if all(>(0), nparts.(Ref(rt.state), relevant_obs))
-            enable!′(create(rt.state), i) 
+        elseif pt == RegularP() # update explicit hom-set w/r/t span Xₙ ↩ • -> Xₙ₊₁
+          for ((lft, rght), rmap, dpo, rule_right) in update_data
+            del_invalid, del_new = deletion!(clocksᵢ, lft; dpo)
+
+            for d in del_invalid # disable clocks which are invalidated
+              (i=>d) ∈ events || disable!′(i => d) # (event,key) already diabled
+            end
+
+            for a in del_new
+              enable!′(clocksᵢ[a], i, a) 
+            end
+            add_invalid, add_new = addition!(clocksᵢ, rule_right, rmap, rght)
+
+            for d in add_invalid # disable clocks which are invalidated
+              (i=>d) ∈ (events) || disable!′(i => d) # (event,key) already diabled
+            end
+            for a in add_new
+              enable!′(clocksᵢ[a], i, a) 
+            end
+          end
+        elseif pt isa RepresentableP
+          relevant_obs = keys(pt)
+          Xs = left(first(first(update_data))), right(first(last(update_data)))
+          # we need to update current timer if # of parts has changed
+          if i ∈ first.(events) && all(>(0), nparts.(Ref(rt.state), relevant_obs))
+            enable!′(create(rt.state), i)
+          elseif !all(ob -> allequal(nparts.(codom.(Xs), ob)), relevant_obs)
+            currently_enabled = haskey(rt, i)
+            currently_enabled && disable!′(i) # Disable if active
+            # enable new timer if possible to apply rule
+            if all(>(0), nparts.(Ref(rt.state), relevant_obs))
+              enable!′(create(rt.state), i) 
+            end
           end
         end
       end
-    end
-    # If any of the matches that were fired are still preserved, re-enable
-    for (event, key) in events
-      if haskey(rt.clocks[event], key)
-        enable!′(rt.clocks[event][key], event, key)
+      # If any of the matches that were fired are still preserved, re-enable
+      for (event, key) in events
+        if haskey(rt.clocks[event], key)
+          enable!′(rt.clocks[event][key], event, key)
+        end
       end
     end
   end

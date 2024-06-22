@@ -16,11 +16,11 @@ function Base.view(t::Traj, viewer; dirname="default")
   fi(i::Int) = joinpath(pth, "$(lpad(i, N, "0")).svg")
   rm.(joinpath.(pth, readdir(pth))) # clear the folder
   states = [t.init; codom.(right.(t.hist))]
-  data = [(0, "(Initial state)", nothing); t.events]
-  map(enumerate(zip(states, data))) do (i, (state, (time, event, _)))
+  data = [(0, 0, "(Initial state)", nothing); t.events]
+  map(enumerate(zip(states, data))) do (i, (state, (time, _, eventname, _)))
     i -= 1
     G = viewer(state, fi(i))
-    G.graph_attrs[:label] = "Step $i @ t=$time: Event $event"
+    G.graph_attrs[:label] = "Step $i @ t=$time: Event $eventname"
     G.graph_attrs[:labelloc] = "t"
     open(fi(i), "w") do io
       show(io, "image/svg+xml", G)

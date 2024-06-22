@@ -5,10 +5,7 @@
 # one will be using. We do this with a `using` statement.
 
 using AlgebraicABMs, Catlab, AlgebraicRewriting
-
-# We will turn on debug messages for AlgebraicABMs, which means we get to see 
-# what the ABM is thinking at each time step when we eventually run it.
-ENV["JULIA_DEBUG"] = "AlgebraicABMs"; 
+ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # hide
 
 #=
 ## Schema 
@@ -21,7 +18,8 @@ aforementioned entities. AttrTypes are placeholders for Julia types, which are
 assigned to objects via attributes (`Attr`).
 
 The schema below *extends* the schema for symmetric graphs, which consists in
-two tables (`E` and `V`, for edges and vertices) and homs (`src`, `tgt`) which
+two tables (`E` and `V`, for edges and vertices), a hom `inv` which pairs each 
+edge with its symmetric dual edge, and homs (`src`, `tgt`) which
 relate the edges to the vertices. We consider each vertex to be a cell in the
 Game of Life. This is a generalization of the game, since it is not enforced
 that every cell has eight neighbors. However the example we run at the end will
@@ -98,58 +96,57 @@ representation of (x,y) coordinates.
 @acset_type LifeStateCoords(SchLifeCoords){Tuple{Int,Int}} <: AbstractSymmetricGraph;
 
 #=
-The following code is helpful for visualizing a game state. It's not important 
-to understand this code in order to understand the model. It uses coordinates 
+The following (hidden) code visualizes LifeStates and uses coordinates 
 if the input is a `LifeStateCoords`, but otherwise it places the vertices in 
 an arbitrary location.
 =#
 
 function view_life(X::Union{LifeState, LifeStateCoords}, pth=tempname())
-  pg = PropertyGraph{Any}(; prog="neato", graph=Dict(),
-    node=Dict(:shape => "circle", :style => "filled", :margin => "0"),
-    edge=Dict(:dir => "none", :minlen => "1"))
-  add_vertices!(pg, nparts(X, :V))
-  for v in vertices(X)
-    is_alive = isempty(incident(X, v, :live))
-    set_vprop!(pg, v, :fillcolor, is_alive ? "red" : "green")
-    if X isa LifeStateCoords 
-      x, y = X[v, :coords]
-      set_vprop!(pg, v, :pos, "$x,$(y)!")
-    end
-  end
-  for e in filter(e -> X[e, :inv] > e, edges(X))
-    add_edge!(pg, X[e, :src], X[e, :tgt])
-  end
-  G = to_graphviz(pg)
-  open(pth, "w") do io
-    show(io, "image/svg+xml", G)
-  end
-  return G
-end;
+  pg = PropertyGraph{Any}(; prog="neato", graph=Dict(), # hide
+    node=Dict(:shape => "circle", :style => "filled", :margin => "0"), # hide
+    edge=Dict(:dir => "none", :minlen => "1")) # hide
+  add_vertices!(pg, nparts(X, :V)) # hide
+  for v in vertices(X) # hide
+    is_alive = isempty(incident(X, v, :live)) # hide
+    set_vprop!(pg, v, :fillcolor, is_alive ? "red" : "green") # hide
+    if X isa LifeStateCoords # hide
+      x, y = X[v, :coords] # hide
+      set_vprop!(pg, v, :pos, "$x,$(y)!") # hide
+    end # hide
+  end # hide
+  for e in filter(e -> X[e, :inv] > e, edges(X)) # hide
+    add_edge!(pg, X[e, :src], X[e, :tgt]) # hide
+  end # hide
+  G = to_graphviz(pg) # hide
+  open(pth, "w") do io # hide
+    show(io, "image/svg+xml", G) # hide
+  end # hide
+  return G # hide
+end; # hide
 
 #=
-This helper function creates an ordinary, square grid and initializes cells as
+This (hidden) helper function creates an ordinary, square grid and initializes cells as
 alive or dead via a boolean-valued input matrix. Like above, one does not need
 to understand this in order to understand the Game of Life model - it's just a 
 convenient way to generate some initial states to run the model on.
 =#
 
 function make_grid(curr::AbstractMatrix)
-  n, m = size(curr)
-  n == m || error("Must be square")
-  X, coords = LifeStateCoords(), Dict()
-  for j in 1:n, i in 1:n
-    coords[i=>j] = add_vertex!(X; coords=(i, j))
-    Bool(curr[i, j]) && add_part!(X, :Life, live=coords[i=>j])
-  end
-  for i in 1:n, j in 1:n
-    i < n && add_edge!(X, coords[i=>j], coords[i+1=>j])
-    j < n && add_edge!(X, coords[i=>j], coords[i=>j+1])
-    i < n && j < n && add_edge!(X, coords[i=>j], coords[i+1=>j+1])
-    i < n && j > 1 && add_edge!(X, coords[i=>j], coords[i+1=>j-1])
-  end
-  return X
-end;
+  n, m = size(curr) # hide
+  n == m || error("Must be square") # hide
+  X, coords = LifeStateCoords(), Dict() # hide
+  for j in 1:n, i in 1:n # hide
+    coords[i=>j] = add_vertex!(X; coords=(i, j)) # hide
+    Bool(curr[i, j]) && add_part!(X, :Life, live=coords[i=>j]) # hide
+  end # hide
+  for i in 1:n, j in 1:n # hide
+    i < n && add_edge!(X, coords[i=>j], coords[i+1=>j]) # hide
+    j < n && add_edge!(X, coords[i=>j], coords[i=>j+1]) # hide
+    i < n && j < n && add_edge!(X, coords[i=>j], coords[i+1=>j+1]) # hide
+    i < n && j > 1 && add_edge!(X, coords[i=>j], coords[i+1=>j-1]) # hide
+  end # hide
+  return X # hide
+end; # hide
 
 #=
 Another helper function, which creates a game state on a square n × n grid.
@@ -176,8 +173,7 @@ If we call `AddCoords` on something built out of `LifeState` instances, it will
 make the corresponding thing built out of `LifeStateCoords` instances. 
 =#
 
-AddCoords = Migrate(SchLifeGraph, LifeState, SchLifeCoords, LifeStateCoords; 
-                    delta=false);
+AddCoords = Migrate(SchLifeGraph, LifeState, SchLifeCoords, LifeStateCoords; delta=false);
 
 # ## Initial state for the model 
 
@@ -204,10 +200,14 @@ rather we want to think of it as a *pattern* for which we could look for
 *matches* inside a real game state.
 
 This pattern is very simple: it consists of a single vertex. A *match* for 
-this pattern in some world state `X` is just a choice of a vertex in `X`.
+this pattern in some world state `X` is just a choice of a vertex in `X`. The 
+matched vertex need not be dead just because our pattern vertex is not marked 
+as alive. So the meaning of `Cell` is "a dead or alive cell", despite the fact 
+that, when we visualize it, it shows up as red (because it hasn't been marked 
+explicitly to be alive).
 =#
 
-const Cell = LifeState(1) # this syntax means: one vertex, nothing else
+const Cell = LifeState(1) # this means: a graph with one vertex, nothing else
 
 view_life(Cell) # red color means this cell is not in image of `life` function.
 
@@ -291,7 +291,7 @@ rules will fire at every tick in time.
 =#
 
 TickRule(name, I_L, I_R; ac) = # Rule which fires on 1.0, 2.0, ...
-  ABMRule(name, Rule(I_L, I_R; ac), DiscreteHazard(1); schema=SchLifeGraph);
+  ABMRule(name, Rule(I_L, I_R; ac), DiscreteHazard(1));
 
 #=
 The context for determining whether the rules of underpopulation,
@@ -311,15 +311,15 @@ When we visualize the result of this function below, we're only visualizing the
 *codomain* of the morphism (i.e. what the morphism is pointing to).
 =#
 function living_neighbors(n::Int; alive=true)::ACSetTransformation
-  X = LifeState(1)
-  alive && add_part!(X, :Life, live=1)
-  for _ in 1:n
-    v = add_part!(X, :V)
-    add_part!(X, :Life, live=v)
-    add_edge!(X, v, 1)
-  end
-  homomorphism(alive ? LiveCell : Cell, X; initial=(V=[1],))
-end;
+  X = LifeState(1) # hide
+  alive && add_part!(X, :Life, live=1) # hide
+  for _ in 1:n # hide
+    v = add_part!(X, :V) # hide
+    add_part!(X, :Life, live=v) # hide
+    add_edge!(X, v, 1) # hide
+  end # hide
+  homomorphism(alive ? LiveCell : Cell, X; initial=(V=[1],)) # hide
+end; # hide
 
 view_life(codom(living_neighbors(3; alive=false)))
 
@@ -369,11 +369,11 @@ three elements of the list below.
 birth = TickRule(:Birth, id(Cell), to_life; 
                  ac=[PAC(living_neighbors(3; alive=false)),
                      NAC(living_neighbors(4; alive=false)),
-                     NAC(to_life)]); # this rule does not apply if cell is alive
+                     NAC(to_life)]); # this rule does NOT apply if cell is alive
 
 # We can now create the model: an ABM is constituted by its transition rules
 
-GoL = ABM(SchLifeGraph, [underpop, overpop, birth]);
+GoL = ABM([underpop, overpop, birth]);
 
 # We wrote an ABM for `LifeState`, but we want to apply it to `G` as its 
 # initial state. `G` is not a `LifeState`, but rather a `LifeStateCoords`! 

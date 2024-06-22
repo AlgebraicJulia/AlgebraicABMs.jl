@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Lokta-Volterra, predator-prey model · AlgebraicABMs.jl</title><meta name="title" content="Lokta-Volterra, predator-prey model · AlgebraicABMs.jl"/><meta property="og:title" content="Lokta-Volterra, predator-prey model · AlgebraicABMs.jl"/><meta property="twitter:title" content="Lokta-Volterra, predator-prey model · AlgebraicABMs.jl"/><meta name="description" content="Documentation for AlgebraicABMs.jl."/><meta property="og:description" content="Documentation for AlgebraicABMs.jl."/><meta property="twitter:description" content="Documentation for AlgebraicABMs.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicABMs.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicABMs.jl</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../sir_petri/">Petri-net based ABMs</a></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li class="is-active"><a class="tocitem" href>Lokta-Volterra, predator-prey model</a><ul class="internal"><li><a class="tocitem" href="#Set-up"><span>Set-up</span></a></li><li><a class="tocitem" href="#Schema"><span>Schema</span></a></li><li><a class="tocitem" href="#Initializing-and-visualizing-world-states"><span>Initializing and visualizing world states</span></a></li><li class="toplevel"><a class="tocitem" href="#Data-migration-functors"><span>Data migration functors</span></a></li><li class="toplevel"><a class="tocitem" href="#Representables"><span>Representables</span></a></li><li class="toplevel"><a class="tocitem" href="#Rules"><span>Rules</span></a></li><li class="toplevel"><a class="tocitem" href="#Adding-timers-to-the-rules-and-making-the-model"><span>Adding timers to the rules and making the model</span></a></li><li class="toplevel"><a class="tocitem" href="#Running-the-model"><span>Running the model</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Lokta-Volterra, predator-prey model</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Lokta-Volterra, predator-prey model</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicABMs.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicABMs.jl/blob/main/docs/literate/lotka_volterra.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Lokta-Volterra,-predator-prey-model"><a class="docs-heading-anchor" href="#Lokta-Volterra,-predator-prey-model">Lokta-Volterra, predator-prey model</a><a id="Lokta-Volterra,-predator-prey-model-1"></a><a class="docs-heading-anchor-permalink" href="#Lokta-Volterra,-predator-prey-model" title="Permalink"></a></h1><h2 id="Set-up"><a class="docs-heading-anchor" href="#Set-up">Set-up</a><a id="Set-up-1"></a><a class="docs-heading-anchor-permalink" href="#Set-up" title="Permalink"></a></h2><p>The first step of running a Julia program is to load the external libraries one will be using. We do this with a <code>using</code> statement.</p><pre><code class="language-julia hljs">using AlgebraicABMs, Catlab, AlgebraicRewriting, DataMigrations
+using Test, Random</code></pre><p>We can also define some shorthand for some long function names</p><pre><code class="language-julia hljs">const hom = homomorphism
+const homs = homomorphisms
+const Var = AttrVar;</code></pre><h2 id="Schema"><a class="docs-heading-anchor" href="#Schema">Schema</a><a id="Schema-1"></a><a class="docs-heading-anchor-permalink" href="#Schema" title="Permalink"></a></h2><p>Defining a schema is stating what data is required to specify a state of the simulation at some point in time. In AlgebraicJulia, this is done via declaring a <code>Presentation</code>, i.e. a database schema. Objects (<code>Ob</code>, or tables) are types of entities. Homs (<code>Hom</code>, or foreign keys) are functional relationships between the aforementioned entities. AttrTypes are placeholders for Julia types, which are assigned to objects via attributes (<code>Attr</code>).</p><p>The schema below <em>extends</em> the schema for symmetric graphs, which consists in two tables (<code>E</code> and <code>V</code>, for edges and vertices), a hom <code>inv</code> which pairs each edge with its symmetric dual edge, and homs (<code>src</code>, <code>tgt</code>) which relate the edges to the vertices. This extension is indicated by the subtype operator <code>&lt;: SchSymmetricGraph</code>. Here we add a notion of cardinal direction to a symmetric graph, encoding that left and right are inverses and that four rotations does nothing. Edges are all assigned a cardinal direction.</p><p>These schemas don&#39;t yet have the capacity to express constraints such as &quot;each vertex has exactly four incident edges, one of each cardinal direction&quot;, but future versions of Catlab will be able to do this. For now, this is a property we will enforce when we create grids.</p><pre><code class="language-julia hljs">@present SchGrid &lt;: SchSymmetricGraph begin
+  Direction::Ob
+  dir::Hom(E, Direction)
+  left::Hom(Direction, Direction)
+  right::Hom(Direction, Direction)
+  left⋅left⋅left⋅left == id(Direction)
+  right⋅left == id(Direction)
+  left⋅right == id(Direction)
+  inv⋅dir == dir⋅left⋅left
+end;
+
+@acset_type Grid(SchGrid) &lt;: AbstractSymmetricGraph; # Create LV datatype</code></pre><p>We now want to allow wolves and sheep to live on the vertices of this grid as well as be oriented in a particular direction.</p><pre><code class="language-julia hljs">@present SchWS &lt;: SchGrid begin
+  (Wolf, Sheep)::Ob
+  wolf_loc::Hom(Wolf, V)
+  sheep_loc::Hom(Sheep, V)
+  wolf_dir::Hom(Wolf,Direction)
+  sheep_dir::Hom(Sheep,Direction)
+end;</code></pre><p>The vertices (patches of grass) have a &quot;countdown&quot; attribute, which measures how long it takes until the grass is ready to eat at a location.</p><pre><code class="language-julia hljs">@present SchWSG &lt;: SchWS begin
+  Countdown::AttrType
+  countdown::Attr(V, Countdown)
+end;</code></pre><p>The animals have an &quot;energy&quot;, drained by moving and reproduction, gained via eating food.</p><pre><code class="language-julia hljs">@present SchLV &lt;: SchWSG begin
+  Eng::AttrType
+  wolf_eng::Attr(Wolf, Eng)
+  sheep_eng::Attr(Sheep, Eng)
+end;
+
+@acset_type LV(SchLV){Int, Int} &lt;: AbstractSymmetricGraph # Create LV datatype
+
+to_graphviz(SchLV; prog=&quot;dot&quot;)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="649pt" height="186pt"
+ viewBox="0.00 0.00 648.80 185.60" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 181.6)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-181.6 644.8,-181.6 644.8,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="83.8" cy="-72.6" rx="27" ry="18"/>
+<text text-anchor="middle" x="83.8" y="-68.9" font-family="Times,serif" font-size="14.00">V</text>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="black" stroke="black" cx="83.8" cy="-1.8" rx="1.8" ry="1.8"/>
+<text text-anchor="middle" x="41" y="-7.4" font-family="Times,serif" font-size="14.00">Countdown</text>
+</g>
+<!-- n1&%2345;&gt;n6 -->
+<g id="edge11" class="edge">
+<title>n1&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M83.8,-54.59C83.8,-42.06 83.8,-25.34 83.8,-14.34"/>
+<polygon fill="black" stroke="black" points="87.3,-14.19 83.8,-4.19 80.3,-14.19 87.3,-14.19"/>
+<text text-anchor="middle" x="123.3" y="-25.4" font-family="Times,serif" font-size="14.00">countdown</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="60.8" cy="-159.6" rx="27" ry="18"/>
+<text text-anchor="middle" x="60.8" y="-155.9" font-family="Times,serif" font-size="14.00">E</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M58.91,-141.59C58.37,-131.75 58.62,-119.25 61.8,-108.6 62.95,-104.76 64.64,-100.94 66.58,-97.3"/>
+<polygon fill="black" stroke="black" points="69.58,-99.11 71.77,-88.74 63.59,-95.48 69.58,-99.11"/>
+<text text-anchor="middle" x="72.8" y="-112.4" font-family="Times,serif" font-size="14.00">src</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M45.26,-144.65C36.09,-134.66 27.42,-120.85 33.8,-108.6 38.06,-100.43 45.19,-93.77 52.76,-88.54"/>
+<polygon fill="black" stroke="black" points="55,-91.26 61.69,-83.05 51.34,-85.3 55,-91.26"/>
+<text text-anchor="middle" x="44.8" y="-112.4" font-family="Times,serif" font-size="14.00">tgt</text>
+</g>
+<!-- n2&%2345;&gt;n2 -->
+<g id="edge3" class="edge">
+<title>n2&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M85.33,-167.35C96.31,-168.09 105.8,-165.51 105.8,-159.6 105.8,-155.63 101.52,-153.16 95.37,-152.19"/>
+<polygon fill="black" stroke="black" points="95.45,-148.69 85.33,-151.85 95.21,-155.69 95.45,-148.69"/>
+<text text-anchor="middle" x="116.8" y="-155.9" font-family="Times,serif" font-size="14.00">inv</text>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="none" stroke="black" cx="242.8" cy="-72.6" rx="36.7" ry="18"/>
+<text text-anchor="middle" x="242.8" y="-68.9" font-family="Times,serif" font-size="14.00">Direction</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge4" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M86.68,-153.56C110.88,-148.22 147.55,-138.48 176.8,-123.6 191.69,-116.03 206.65,-105.03 218.57,-95.27"/>
+<polygon fill="black" stroke="black" points="220.89,-97.89 226.28,-88.78 216.38,-92.54 220.89,-97.89"/>
+<text text-anchor="middle" x="210.3" y="-112.4" font-family="Times,serif" font-size="14.00">dir</text>
+</g>
+<!-- n3&%2345;&gt;n3 -->
+<g id="edge5" class="edge">
+<title>n3&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M278.94,-76.53C289.48,-76.39 297.65,-75.08 297.65,-72.6 297.65,-71.01 294.3,-69.9 289.12,-69.28"/>
+<polygon fill="black" stroke="black" points="289.12,-65.77 278.94,-68.67 288.71,-72.76 289.12,-65.77"/>
+<text text-anchor="middle" x="310.15" y="-68.9" font-family="Times,serif" font-size="14.00">left</text>
+</g>
+<!-- n3&%2345;&gt;n3 -->
+<g id="edge6" class="edge">
+<title>n3&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M276.65,-79.82C299.57,-81.77 322.65,-79.37 322.65,-72.6 322.65,-66.84 305.91,-64.24 286.79,-64.8"/>
+<polygon fill="black" stroke="black" points="286.44,-61.31 276.65,-65.38 286.84,-68.3 286.44,-61.31"/>
+<text text-anchor="middle" x="340.65" y="-68.9" font-family="Times,serif" font-size="14.00">right</text>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="none" stroke="black" cx="515.8" cy="-159.6" rx="27" ry="18"/>
+<text text-anchor="middle" x="515.8" y="-155.9" font-family="Times,serif" font-size="14.00">Wolf</text>
+</g>
+<!-- n4&%2345;&gt;n1 -->
+<g id="edge7" class="edge">
+<title>n4&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M488.84,-157.44C452.04,-154.97 384.73,-147.33 332.8,-123.6 323.01,-119.13 323.67,-112.89 313.8,-108.6 312.69,-108.12 184.74,-88.8 120.19,-79.08"/>
+<polygon fill="black" stroke="black" points="120.44,-75.58 110.03,-77.55 119.39,-82.5 120.44,-75.58"/>
+<text text-anchor="middle" x="361.8" y="-112.4" font-family="Times,serif" font-size="14.00">wolf_loc</text>
+</g>
+<!-- n4&%2345;&gt;n3 -->
+<g id="edge9" class="edge">
+<title>n4&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M512.74,-141.55C509.82,-130.41 504.24,-116.49 493.8,-108.6 462.55,-84.97 353.31,-77.28 289.71,-74.79"/>
+<polygon fill="black" stroke="black" points="289.66,-71.28 279.54,-74.42 289.4,-78.28 289.66,-71.28"/>
+<text text-anchor="middle" x="533.8" y="-112.4" font-family="Times,serif" font-size="14.00">wolf_dir</text>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="black" stroke="black" cx="506.8" cy="-72.6" rx="1.8" ry="1.8"/>
+<text text-anchor="middle" x="490.5" y="-78.2" font-family="Times,serif" font-size="14.00">Eng</text>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge12" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M539.19,-150.52C560.14,-141.89 585.99,-126.94 574.8,-108.6 562.48,-88.41 534.39,-79.37 518.43,-75.74"/>
+<polygon fill="black" stroke="black" points="518.98,-72.28 508.5,-73.84 517.66,-79.16 518.98,-72.28"/>
+<text text-anchor="middle" x="608.8" y="-112.4" font-family="Times,serif" font-size="14.00">wolf_eng</text>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="none" stroke="black" cx="242.8" cy="-159.6" rx="27" ry="18"/>
+<text text-anchor="middle" x="242.8" y="-155.9" font-family="Times,serif" font-size="14.00">Sheep</text>
+</g>
+<!-- n5&%2345;&gt;n1 -->
+<g id="edge8" class="edge">
+<title>n5&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M215.71,-158.28C185.83,-156.56 137.86,-149.54 106.8,-123.6 99.63,-117.61 94.58,-108.91 91.08,-100.43"/>
+<polygon fill="black" stroke="black" points="94.29,-99.02 87.65,-90.77 87.7,-101.36 94.29,-99.02"/>
+<text text-anchor="middle" x="141.8" y="-112.4" font-family="Times,serif" font-size="14.00">sheep_loc</text>
+</g>
+<!-- n5&%2345;&gt;n3 -->
+<g id="edge10" class="edge">
+<title>n5&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M242.8,-141.4C242.8,-129.76 242.8,-114.15 242.8,-100.84"/>
+<polygon fill="black" stroke="black" points="246.3,-100.78 242.8,-90.78 239.3,-100.78 246.3,-100.78"/>
+<text text-anchor="middle" x="277.8" y="-112.4" font-family="Times,serif" font-size="14.00">sheep_dir</text>
+</g>
+<!-- n5&%2345;&gt;n7 -->
+<g id="edge13" class="edge">
+<title>n5&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M269.22,-155.39C300.25,-150.97 352.81,-141.46 394.8,-123.6 406.03,-118.82 406.95,-114.2 417.8,-108.6 444.81,-94.66 478.7,-82.76 495.82,-77.11"/>
+<polygon fill="black" stroke="black" points="497.05,-80.39 505.5,-74 494.91,-73.73 497.05,-80.39"/>
+<text text-anchor="middle" x="455.8" y="-112.4" font-family="Times,serif" font-size="14.00">sheep_eng</text>
+</g>
+</g>
+</svg>
+'/><p>We can further extend this schema with an additional attribute of (x,y) coordinates for every vertex. This is nice for visualization but is otherwise unnecessary when doing the actual agent-based modeling. We can also add names to the directions for convenience.</p><p>So what we will do is <em>build</em> our model with the LV schema and then <em>run</em> our model with the LV_viz schema.</p><pre><code class="language-julia hljs">@present SchLV_Viz &lt;: SchLV begin
+  (Coord, Name)::AttrType
+  coord::Attr(V, Coord)
+  dirname::Attr(Direction, Name)
+end
+
+@acset_type LV_Viz(SchLV_Viz){Int, Int, Tuple{Int,Int}, String} &lt;: AbstractSymmetricGraph
+
+const LV′ = Union{LV, LV_Viz};</code></pre><h2 id="Initializing-and-visualizing-world-states"><a class="docs-heading-anchor" href="#Initializing-and-visualizing-world-states">Initializing and visualizing world states</a><a id="Initializing-and-visualizing-world-states-1"></a><a class="docs-heading-anchor-permalink" href="#Initializing-and-visualizing-world-states" title="Permalink"></a></h2><p>To help us create initial states for simulations, a (hidden) helper function that makes an n × n grid with periodic boundary conditions. One edge in each cardinal direction originates at every point.</p><pre><code class="language-julia hljs">function create_grid(n::Int)::LV_Viz</code></pre><p>To initialize a state of the world with sheep and wolves, we also accept parameters which indicate the fraction of spaces that are populated with that animal.</p><pre><code class="language-julia hljs">function initialize(n::Int, sheep::Float64, wolves=nothing)::LV_Viz</code></pre><p>Some visualization code below will allow us to see states of the world. Edges are left implicit (we know from how the graphs were constructed that there are edges between every pair of adjacent vertices).</p><pre><code class="language-julia hljs">function view_LV(p::LV′, pth=tempname(); name=&quot;G&quot;, title=&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">view_LV (generic function with 2 methods)</code></pre><p>We can use this to visualize an example</p><pre><code class="language-julia hljs">init = initialize(2, 0.5)
+view_LV(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="130pt" height="121pt"
+ viewBox="0.00 0.00 129.61 120.75" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 116.75)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-116.75 125.61,-116.75 125.61,4 -4,4"/>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="tan" stroke="tan" cx="18" cy="-22.75" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-19.05" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="tan" stroke="tan" cx="18" cy="-94.75" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-91.05" font-family="Times,serif" font-size="14.00">5</text>
+</g>
+<!-- v3 -->
+<g id="node3" class="node">
+<title>v3</title>
+<ellipse fill="tan" stroke="tan" cx="90" cy="-22.75" rx="23" ry="23"/>
+<text text-anchor="middle" x="90" y="-19.05" font-family="Times,serif" font-size="14.00">24</text>
+</g>
+<!-- v4 -->
+<g id="node4" class="node">
+<title>v4</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-94.75" rx="18" ry="18"/>
+</g>
+<!-- w1 -->
+<g id="node5" class="node">
+<title>w1</title>
+<polygon fill="red" stroke="red" points="83.29,-37.1 61.29,-37.1 61.29,-15.1 83.29,-15.1 83.29,-37.1"/>
+<text text-anchor="middle" x="72.29" y="-22.4" font-family="Times,serif" font-size="14.00">1⁵</text>
+</g>
+<!-- w2 -->
+<g id="node6" class="node">
+<title>w2</title>
+<polygon fill="red" stroke="red" points="121.61,-34.48 99.61,-34.48 99.61,-12.48 121.61,-12.48 121.61,-34.48"/>
+<text text-anchor="middle" x="110.61" y="-19.78" font-family="Times,serif" font-size="14.00">2⁵</text>
+</g>
+<!-- s1 -->
+<g id="node7" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="88.18,-37.88 66.18,-37.88 66.18,-15.88 88.18,-15.88 88.18,-37.88"/>
+<text text-anchor="middle" x="77.18" y="-23.18" font-family="Times,serif" font-size="14.00">1⁵</text>
+</g>
+<!-- s2 -->
+<g id="node8" class="node">
+<title>s2</title>
+<polygon fill="lightblue" stroke="lightblue" points="51.78,-35.87 29.78,-35.87 29.78,-13.87 51.78,-13.87 51.78,-35.87"/>
+<text text-anchor="middle" x="40.78" y="-21.17" font-family="Times,serif" font-size="14.00">2⁵</text>
+</g>
+</g>
+</svg>
+'/><h1 id="Data-migration-functors"><a class="docs-heading-anchor" href="#Data-migration-functors">Data migration functors</a><a id="Data-migration-functors-1"></a><a class="docs-heading-anchor-permalink" href="#Data-migration-functors" title="Permalink"></a></h1><p>The schema LV has a certain symmetry between wolves and sheep, and this symmetry can be used to take <em>instances</em> of the schema (i.e. world states) and swap the wolves and the sheep. This is helpful for avoiding repeating work: there are certain actions that wolves and sheep share, so, by using this data migration, we can define them in terms of sheep and then migrate along <code>F</code> to obtain the analogous actions for wolves.</p><pre><code class="language-julia hljs">F = Migrate(
+  Dict(:Sheep =&gt; :Wolf, :Wolf =&gt; :Sheep),
+  Dict([:sheep_loc =&gt; :wolf_loc, :wolf_loc =&gt; :sheep_loc,
+    :sheep_eng =&gt; :wolf_eng, :wolf_eng =&gt; :sheep_eng, :countdown =&gt; :countdown,
+    :sheep_dir =&gt; :wolf_dir, :wolf_dir =&gt; :sheep_dir,]), SchLV, LV);</code></pre><p>We ought to be able to take a state of the world (with no coordinate information) and obtain a state of the world with coordinates (the canonical way to do this is to assign &quot;variables&quot; for the values of the coordinates).</p><pre><code class="language-julia hljs">Viz = Migrate(SchLV, LV, SchLV_Viz, LV_Viz; delta=false);</code></pre><h1 id="Representables"><a class="docs-heading-anchor" href="#Representables">Representables</a><a id="Representables-1"></a><a class="docs-heading-anchor-permalink" href="#Representables" title="Permalink"></a></h1><p>We want to say &quot;give me a sheep&quot; or &quot;give me a sheep and a wolf that are on the same vertex&quot; and have it automatically specify the remaining information in the most generic way possible. The <code>@acset_colim</code> macro is perfect for exactly this. In order to use that macro, we need to precompute the <code>yoneda_cache</code>.</p><pre><code class="language-julia hljs">yLV = yoneda_cache(LV);
+I = LV() # Empty agent type
+S = @acset_colim yLV begin s::Sheep end # Generic sheep agent
+E = @acset_colim yLV begin e::E end # Generic edge
+Eng = @acset_colim yLV begin e::Eng end # Free floating energy unit
+D = @acset_colim yLV begin D::Direction end # Generic cardinal directions
+W = F(S) # Generic wolf agent, obtained via the swapping `F` data migration
+G = @acset_colim yLV begin v::V end; # Generic grass agent (i.e. vertex)</code></pre><h1 id="Rules"><a class="docs-heading-anchor" href="#Rules">Rules</a><a id="Rules-1"></a><a class="docs-heading-anchor-permalink" href="#Rules" title="Permalink"></a></h1><p>We have finished specifying what makes up a simulation state, and next is to define what sorts of transitions are possible. This is done by declaring rewrite rules.</p><h3 id="Rotating"><a class="docs-heading-anchor" href="#Rotating">Rotating</a><a id="Rotating-1"></a><a class="docs-heading-anchor-permalink" href="#Rotating" title="Permalink"></a></h3><p>Our first action that is possible for sheep (and wolves) is rotation. Animals will, with some probability, change their orientation. This is a rewrite rule which only modifies an attribute rather than changing any combinatorial data, so rather than the usual span <code>L ← I → R</code> data required we simply put in a single ACSet along with an <code>expr</code> dictionary which states how attributes change.</p><pre><code class="language-julia hljs">DVS_N, DVS_E, DVS_W, _ = homs(D ⊕ G ⊕ Eng, S; initial=(Eng=[Var(1)],))
+sheep_rl = Rule(DVS_N, DVS_E);
+sheep_rr = Rule(DVS_N, DVS_W);</code></pre><h4 id="Test-rotation"><a class="docs-heading-anchor" href="#Test-rotation">Test rotation</a><a id="Test-rotation-1"></a><a class="docs-heading-anchor-permalink" href="#Test-rotation" title="Permalink"></a></h4><pre><code class="language-julia hljs">ex = @acset_colim yLV begin
+  e::E; s::Sheep; countdown(src(e)) == 0; countdown(tgt(e)) == 0
+  sheep_loc(s)==src(e); sheep_eng(s)==100; dir(e)==left(sheep_dir(s))
+end;
+
+expected = copy(ex);
+expected[:sheep_dir] = ex[1, :dir] # rotate right aligns the sheep w/ the edge
+
+@test is_isomorphic(rewrite(sheep_rl, ex), expected)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h3 id="Moving-forward"><a class="docs-heading-anchor" href="#Moving-forward">Moving forward</a><a id="Moving-forward-1"></a><a class="docs-heading-anchor-permalink" href="#Moving-forward" title="Permalink"></a></h3><pre><code class="language-julia hljs">s_fwd_l = @acset_colim yLV begin
+  e::E; s::Sheep
+  sheep_loc(s) == src(e)
+  dir(e) == sheep_dir(s)
+end
+
+s_fwd_r = @acset_colim yLV begin
+  e::E; s::Sheep; sheep_loc(s) == tgt(e); dir(e) == sheep_dir(s)
+end;
+
+sheep_fwd_rule = Rule(first(homs(E, s_fwd_l; monic=true)),
+                      last(homs(E,  s_fwd_r; monic=true)),
+                      expr=(Eng=[((eₛ,),) -&gt; eₛ - 1],));</code></pre><h4 id="Moving-forward-test"><a class="docs-heading-anchor" href="#Moving-forward-test">Moving forward test</a><a id="Moving-forward-test-1"></a><a class="docs-heading-anchor-permalink" href="#Moving-forward-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">ex = @acset_colim yLV begin
+  (e1,e2)::E; (s::Sheep)
+  src(e2)==tgt(e1); sheep_loc(s)==src(e1)
+  countdown(src(e1))==0; countdown(tgt(e1))==0; countdown(tgt(e2))==0
+  sheep_eng(s)==10
+  sheep_dir(s)==dir(e1); dir(e1)==left(dir(e2))
+end
+expected = copy(ex);
+expected[1, :sheep_loc] = ex[1, :tgt]
+expected[1, :sheep_eng] = 9
+
+@test is_isomorphic(expected, rewrite(sheep_fwd_rule, ex))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h3 id="Sheep-eat-grass"><a class="docs-heading-anchor" href="#Sheep-eat-grass">Sheep eat grass</a><a id="Sheep-eat-grass-1"></a><a class="docs-heading-anchor-permalink" href="#Sheep-eat-grass" title="Permalink"></a></h3><pre><code class="language-julia hljs">s_eat_L = @acset_colim yLV begin s::Sheep; countdown(sheep_loc(s)) == 0 end;
+s_eat_R = @acset_colim yLV begin s::Sheep; countdown(sheep_loc(s)) == 30 end;
+se_rule = Rule(hom(S, s_eat_L), hom(S, s_eat_R); expr=(Eng=[((vₛ,),) -&gt; vₛ + 4],));</code></pre><h4 id="Sheep-eating-test"><a class="docs-heading-anchor" href="#Sheep-eating-test">Sheep eating test</a><a id="Sheep-eating-test-1"></a><a class="docs-heading-anchor-permalink" href="#Sheep-eating-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">ex = @acset_colim yLV begin
+  e::E; s::Sheep
+  dir(e)==sheep_dir(s); countdown(src(e))==10; countdown(tgt(e)) == 0
+  sheep_loc(s)==tgt(e); sheep_eng(s) == 3
+end
+
+expected = copy(ex)
+expected[2,:countdown] = 30
+expected[1,:sheep_eng] = 7
+
+@test is_isomorphic(expected, rewrite(se_rule, ex))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h3 id="Wolves-eat-sheep"><a class="docs-heading-anchor" href="#Wolves-eat-sheep">Wolves eat sheep</a><a id="Wolves-eat-sheep-1"></a><a class="docs-heading-anchor-permalink" href="#Wolves-eat-sheep" title="Permalink"></a></h3><pre><code class="language-julia hljs">w_eat_l = @acset_colim yLV begin
+  s::Sheep; w::Wolf; sheep_loc(s) == wolf_loc(w)
+end;
+
+we_rule = Rule(hom(W⊕D, w_eat_l), id(W⊕D);
+               expr=(Eng=[((vₛ, vᵩ),) -&gt; vᵩ + 20],));</code></pre><h4 id="Wolf-eating-test"><a class="docs-heading-anchor" href="#Wolf-eating-test">Wolf eating test</a><a id="Wolf-eating-test-1"></a><a class="docs-heading-anchor-permalink" href="#Wolf-eating-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">ex = @acset_colim yLV begin
+  (s::Sheep); (w::Wolf); (e::E);
+  countdown(src(e))==9; countdown(tgt(e))==10
+  sheep_dir(s)==left(wolf_dir(w))
+  sheep_dir(s)==right(dir(e))
+  sheep_eng(s)==3; wolf_eng(w)==16
+  sheep_loc(s)==tgt(e); wolf_loc(w)==tgt(e)
+end
+
+expected = copy(ex)
+expected[1, :wolf_eng] = 36
+rem_part!(expected, :Sheep, 1)
+
+@test is_isomorphic(rewrite(we_rule, ex), expected)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h3 id="Sheep-starvation"><a class="docs-heading-anchor" href="#Sheep-starvation">Sheep starvation</a><a id="Sheep-starvation-1"></a><a class="docs-heading-anchor-permalink" href="#Sheep-starvation" title="Permalink"></a></h3><pre><code class="language-julia hljs">s_die_l = @acset_colim yLV begin s::Sheep; sheep_eng(s) == 0 end;
+sheep_die_rule = Rule(hom(G⊕D, s_die_l), id(G⊕D));</code></pre><h4 id="Sheep-starvation-test"><a class="docs-heading-anchor" href="#Sheep-starvation-test">Sheep starvation test</a><a id="Sheep-starvation-test-1"></a><a class="docs-heading-anchor-permalink" href="#Sheep-starvation-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">ex = @acset_colim yLV begin
+  s::Sheep; w::Wolf
+  countdown(sheep_loc(s))==20; countdown(wolf_loc(w))==10
+  sheep_eng(s)==0; wolf_eng(w)==10; sheep_dir(s) == right(wolf_dir(w))
+end
+expected = copy(ex)
+rem_part!(expected, :Sheep, 1)
+
+@test is_isomorphic(rewrite(sheep_die_rule,ex), expected)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h3 id="Reproduction"><a class="docs-heading-anchor" href="#Reproduction">Reproduction</a><a id="Reproduction-1"></a><a class="docs-heading-anchor-permalink" href="#Reproduction" title="Permalink"></a></h3><pre><code class="language-julia hljs">s_reprod_r = @acset_colim yLV begin
+  (x, y)::Sheep; sheep_loc(x) == sheep_loc(y); sheep_dir(x)==sheep_dir(y)
+end;
+
+sheep_reprod_rule = Rule(
+  hom(G⊕D, S),
+  hom(G⊕D, s_reprod_r);
+  expr=(Dir=fill(vs-&gt;only(vs) ,2),
+        Eng=fill(vs -&gt; round(Int, vs[1] / 2, RoundUp), 2),)
+);</code></pre><h4 id="Reproduction-test"><a class="docs-heading-anchor" href="#Reproduction-test">Reproduction test</a><a id="Reproduction-test-1"></a><a class="docs-heading-anchor-permalink" href="#Reproduction-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">ex = @acset_colim yLV begin
+  s::Sheep; w::Wolf
+  countdown(sheep_loc(s))==20; countdown(wolf_loc(w))==10
+  sheep_eng(s)==10; wolf_eng(w)==20; sheep_dir(s) == right(wolf_dir(w))
+end
+
+expected = copy(ex)
+add_part!(expected,:Sheep)
+expected[:sheep_eng] = [5, 5]
+expected[:sheep_loc] = fill(ex[1,:sheep_loc], 2)
+expected[:sheep_dir] = fill(ex[1,:sheep_dir], 2)
+
+m = hom(pattern(sheep_reprod_rule),ex)
+can_match(sheep_reprod_rule, m)
+@test is_isomorphic(rewrite(sheep_reprod_rule,ex),expected)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h3 id="Grass-increments"><a class="docs-heading-anchor" href="#Grass-increments">Grass increments</a><a id="Grass-increments-1"></a><a class="docs-heading-anchor-permalink" href="#Grass-increments" title="Permalink"></a></h3><pre><code class="language-julia hljs">g_inc_n = @acset LV begin V=1; countdown=0 end
+
+g_inc_rule = Rule(G; ac=[AppCond(hom(G, g_inc_n), false)],
+                  expr=(Countdown=[((vᵥ,),) -&gt; vᵥ - 1],));</code></pre><h4 id="Grass-incrementing-test"><a class="docs-heading-anchor" href="#Grass-incrementing-test">Grass incrementing test</a><a id="Grass-incrementing-test-1"></a><a class="docs-heading-anchor-permalink" href="#Grass-incrementing-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">ex = @acset_colim yLV begin
+  e::E; countdown(src(e)) == 0; countdown(tgt(e)) == 2
+end
+
+expected = @acset_colim yLV begin
+  e::E; countdown(src(e)) == 0; countdown(tgt(e)) == 1
+end
+
+@test is_isomorphic(rewrite(g_inc_rule, ex), expected)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h1 id="Adding-timers-to-the-rules-and-making-the-model"><a class="docs-heading-anchor" href="#Adding-timers-to-the-rules-and-making-the-model">Adding timers to the rules and making the model</a><a id="Adding-timers-to-the-rules-and-making-the-model-1"></a><a class="docs-heading-anchor-permalink" href="#Adding-timers-to-the-rules-and-making-the-model" title="Permalink"></a></h1><p>With our possible actions defined, we now need to provide enough information for a simulator to execute the actions in time. A simple way of doing this is to add an exponential waiting time to each action.</p><pre><code class="language-julia hljs">MkRule(args) = ABMRule(args[1], args[2], ContinuousHazard(args[3]))
+
+rules = MkRule.([
+  (:SheepRotateRight, sheep_rr , 1.),
+  (:SheepRotateLeft, sheep_rl , 1.),
+  (:SheepMoveFwd, sheep_fwd_rule, 0.5),
+  (:WolfRotateRight, F(sheep_rr), 1.),
+  (:WolfRotateLeft, F(sheep_rl),1.),
+  (:WolfMoveFwd, F(sheep_fwd_rule), .25),
+  (:SheepStarve, sheep_die_rule, 0.001),
+  (:WolfStarve, F(sheep_die_rule), 0.001),
+  (:SheepReprod, sheep_reprod_rule, 0.5),
+  (:WolfReprod, F(sheep_reprod_rule), 20),
+  (:GrassGrow, g_inc_rule , 1.)])
+
+
+abm = ABM(rules) # this is defined for SchLV, not SchLV_Viz
+abm_viz = Viz(abm);</code></pre><h1 id="Running-the-model"><a class="docs-heading-anchor" href="#Running-the-model">Running the model</a><a id="Running-the-model-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-model" title="Permalink"></a></h1><pre><code class="language-julia hljs">init = initialize(2, 0.25)
+
+res = run!(abm_viz, init; maxevent=3)
+imgs = view(res, view_LV);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Debug: Step 0: Event GrassGrow | Fired @ t = 0.05 (8 queued)
+└ @ AlgebraicABMs.ABMs ~/work/AlgebraicABMs.jl/AlgebraicABMs.jl/src/ABMs.jl:482
+┌ Debug: Step 1: Event WolfMoveFwd | Fired @ t = 0.16 (9 queued)
+└ @ AlgebraicABMs.ABMs ~/work/AlgebraicABMs.jl/AlgebraicABMs.jl/src/ABMs.jl:482
+┌ Debug: Step 2: Event SheepMoveFwd | Fired @ t = 0.18 (10 queued)
+└ @ AlgebraicABMs.ABMs ~/work/AlgebraicABMs.jl/AlgebraicABMs.jl/src/ABMs.jl:482</code></pre><p>The first image is our starting point.</p><pre><code class="language-julia hljs">imgs[1]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="270pt" height="159pt"
+ viewBox="0.00 0.00 270.00 158.94" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 154.94)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-154.94 266,-154.94 266,4 -4,4"/>
+<text text-anchor="middle" x="131" y="-135.74" font-family="Times,serif" font-size="14.00">Step 0 @ t=0: Event (Initial state)</text>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="95.56" cy="-22.75" rx="18" ry="18"/>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="tan" stroke="tan" cx="95.56" cy="-94.75" rx="23" ry="23"/>
+<text text-anchor="middle" x="95.56" y="-91.05" font-family="Times,serif" font-size="14.00">29</text>
+</g>
+<!-- v3 -->
+<g id="node3" class="node">
+<title>v3</title>
+<ellipse fill="tan" stroke="tan" cx="167.56" cy="-22.75" rx="23" ry="23"/>
+<text text-anchor="middle" x="167.56" y="-19.05" font-family="Times,serif" font-size="14.00">23</text>
+</g>
+<!-- v4 -->
+<g id="node4" class="node">
+<title>v4</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="167.56" cy="-94.75" rx="18" ry="18"/>
+</g>
+<!-- w1 -->
+<g id="node5" class="node">
+<title>w1</title>
+<polygon fill="red" stroke="red" points="93.7,-35.23 71.7,-35.23 71.7,-13.23 93.7,-13.23 93.7,-35.23"/>
+<text text-anchor="middle" x="82.7" y="-20.53" font-family="Times,serif" font-size="14.00">1⁵</text>
+</g>
+<!-- s1 -->
+<g id="node6" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="107.21,-127.94 85.21,-127.94 85.21,-105.94 107.21,-105.94 107.21,-127.94"/>
+<text text-anchor="middle" x="96.21" y="-113.24" font-family="Times,serif" font-size="14.00">1⁵</text>
+</g>
+</g>
+</svg>
+'/><p>Then the first event</p><pre><code class="language-julia hljs">imgs[2]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="414pt" height="158pt"
+ viewBox="0.00 0.00 414.00 157.53" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 153.53)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-153.53 410,-153.53 410,4 -4,4"/>
+<text text-anchor="middle" x="203" y="-134.33" font-family="Times,serif" font-size="14.00">Step 1 @ t=0.04695157988712062: Event GrassGrow</text>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="tan" stroke="tan" cx="169" cy="-94.75" rx="23" ry="23"/>
+<text text-anchor="middle" x="169" y="-91.05" font-family="Times,serif" font-size="14.00">28</text>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="169" cy="-22.75" rx="18" ry="18"/>
+</g>
+<!-- v3 -->
+<g id="node3" class="node">
+<title>v3</title>
+<ellipse fill="tan" stroke="tan" cx="241" cy="-22.75" rx="23" ry="23"/>
+<text text-anchor="middle" x="241" y="-19.05" font-family="Times,serif" font-size="14.00">23</text>
+</g>
+<!-- v4 -->
+<g id="node4" class="node">
+<title>v4</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="241" cy="-94.75" rx="18" ry="18"/>
+</g>
+<!-- w1 -->
+<g id="node5" class="node">
+<title>w1</title>
+<polygon fill="red" stroke="red" points="164.25,-34.62 142.25,-34.62 142.25,-12.62 164.25,-12.62 164.25,-34.62"/>
+<text text-anchor="middle" x="153.25" y="-19.92" font-family="Times,serif" font-size="14.00">1⁵</text>
+</g>
+<!-- s1 -->
+<g id="node6" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="181.48,-126.53 159.48,-126.53 159.48,-104.53 181.48,-104.53 181.48,-126.53"/>
+<text text-anchor="middle" x="170.48" y="-111.83" font-family="Times,serif" font-size="14.00">1⁵</text>
+</g>
+</g>
+</svg>
+'/><p>Then the second event</p><pre><code class="language-julia hljs">imgs[3]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="436pt" height="158pt"
+ viewBox="0.00 0.00 436.00 157.54" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 153.54)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-153.54 432,-153.54 432,4 -4,4"/>
+<text text-anchor="middle" x="214" y="-134.34" font-family="Times,serif" font-size="14.00">Step 2 @ t=0.15700057989841243: Event WolfMoveFwd</text>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="178" cy="-22.75" rx="18" ry="18"/>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="tan" stroke="tan" cx="250" cy="-22.75" rx="23" ry="23"/>
+<text text-anchor="middle" x="250" y="-19.05" font-family="Times,serif" font-size="14.00">23</text>
+</g>
+<!-- v3 -->
+<g id="node3" class="node">
+<title>v3</title>
+<ellipse fill="tan" stroke="tan" cx="178" cy="-94.75" rx="23" ry="23"/>
+<text text-anchor="middle" x="178" y="-91.05" font-family="Times,serif" font-size="14.00">28</text>
+</g>
+<!-- v4 -->
+<g id="node4" class="node">
+<title>v4</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="250" cy="-94.75" rx="18" ry="18"/>
+</g>
+<!-- w1 -->
+<g id="node5" class="node">
+<title>w1</title>
+<polygon fill="red" stroke="red" points="243.13,-34.27 221.13,-34.27 221.13,-12.27 243.13,-12.27 243.13,-34.27"/>
+<text text-anchor="middle" x="232.13" y="-19.57" font-family="Times,serif" font-size="14.00">1⁴</text>
+</g>
+<!-- s1 -->
+<g id="node6" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="195.58,-126.54 173.58,-126.54 173.58,-104.54 195.58,-104.54 195.58,-126.54"/>
+<text text-anchor="middle" x="184.58" y="-111.84" font-family="Times,serif" font-size="14.00">1⁵</text>
+</g>
+</g>
+</svg>
+'/><p>And the third event</p><pre><code class="language-julia hljs">imgs[4]</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="448pt" height="148pt"
+ viewBox="0.00 0.00 448.00 148.50" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 144.5)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-144.5 444,-144.5 444,4 -4,4"/>
+<text text-anchor="middle" x="220" y="-125.3" font-family="Times,serif" font-size="14.00">Step 3 @ t=0.17532737120694405: Event SheepMoveFwd</text>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="tan" stroke="tan" cx="184" cy="-94.75" rx="23" ry="23"/>
+<text text-anchor="middle" x="184" y="-91.05" font-family="Times,serif" font-size="14.00">28</text>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="184" cy="-22.75" rx="18" ry="18"/>
+</g>
+<!-- v3 -->
+<g id="node3" class="node">
+<title>v3</title>
+<ellipse fill="tan" stroke="tan" cx="256" cy="-22.75" rx="23" ry="23"/>
+<text text-anchor="middle" x="256" y="-19.05" font-family="Times,serif" font-size="14.00">23</text>
+</g>
+<!-- v4 -->
+<g id="node4" class="node">
+<title>v4</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="256" cy="-94.75" rx="18" ry="18"/>
+</g>
+<!-- w1 -->
+<g id="node5" class="node">
+<title>w1</title>
+<polygon fill="red" stroke="red" points="254.56,-36.47 232.56,-36.47 232.56,-14.47 254.56,-14.47 254.56,-36.47"/>
+<text text-anchor="middle" x="243.56" y="-21.77" font-family="Times,serif" font-size="14.00">1⁴</text>
+</g>
+<!-- s1 -->
+<g id="node6" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="201.3,-53.65 179.3,-53.65 179.3,-31.65 201.3,-31.65 201.3,-53.65"/>
+<text text-anchor="middle" x="190.3" y="-38.95" font-family="Times,serif" font-size="14.00">1⁴</text>
+</g>
+</g>
+</svg>
+'/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../game_of_life/">« Conway&#39;s Game of Life</a><a class="docs-footer-nextpage" href="../../api/">Library Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Saturday 22 June 2024 07:10">Saturday 22 June 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

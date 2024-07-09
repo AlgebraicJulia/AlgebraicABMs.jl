@@ -76,7 +76,7 @@ v2 = @acset LSet begin X=2; D=1; f=[AttrVar(1), AttrVar(1)] end
 dup_vertex = ABMRule(Rule(id(v), homomorphism(v, v2)), DiscreteHazard(1.))
 
 # Dynamics: for an individual variable, it grows linearly w/ time
-flow = ABMFlow(v, RawODE([_ -> 1.0]), :Grow, [(:D => 1)])
+flow = ABMFlow(v, RawODE([_ -> 1.0]), :Grow, [], [(:D => 1)])
 # Make ABM
 abm = ABM([dup_vertex], [flow])
 

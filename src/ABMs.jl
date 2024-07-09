@@ -130,6 +130,9 @@ Base.keys(p::RepresentableP) = keys(p.parts)
 multiplier(p::RepresentableP, X::ACSet) =
   prod(nparts(X, k)^length(v) for (k, v) in pairs(p.parts))
 
+not_monic(b::Bool) = b === false 
+not_monic(obs::AbstractVector{Symbol}) = isempty(obs)
+
 """
 Analyze a pattern to find the most efficient pattern type for it.
 
@@ -148,7 +151,7 @@ function pattern_type(r::Rule, is_exp::Bool)
   isempty(p) && return EmptyP()
 
   # Determine if pattern is a coproduct of representables
-  if is_exp
+  if is_exp && isempty(r.conditions) && not_monic(r.monic)
     repr_loc = DefaultDict{Symbol, Vector{Int}}(() -> Int[])
     reprs = repr_dict(typeof(p))
     ccs, iso′ = connected_acset_components(p)
@@ -240,11 +243,12 @@ abstract type AbsDynamics end
   dynam::Vector{Function}
 end
 
-"""Continuous dynamics"""
+""" Continuous dynamics """
 @struct_hash_equal struct ABMFlow 
   pat::ACSet
   dyn::AbsDynamics
   name::Maybe{Symbol}
+  acs::Vector{Condition} # application conditions
   mapping::Vector{Pair{Symbol, Int}} # pair pat's variables w/ dyn quantities
 end 
 

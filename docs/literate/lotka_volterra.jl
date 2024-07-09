@@ -199,7 +199,7 @@ function view_LV(p::LV′, pth=tempname(); name="G", title="")
     show(io, "image/svg+xml", g) # hide
   end # hide
   return g # hide
-end # hide
+end; # hide
 
 # We can use this to visualize an example
 

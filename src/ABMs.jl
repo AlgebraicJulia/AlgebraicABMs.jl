@@ -476,7 +476,7 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
     new_time = first(next(rt.sampler, rt.tnow, rt.rng))
     if !isempty(abm.dyn) && dt < new_time 
       error("HERE")
-    else  
+    else
       # Get next event + unpack data
       events::Vector{Pair{Int,Maybe{KeyType}}} = pops!(rt) # updates the clock time
       N = length(rt.sampler)

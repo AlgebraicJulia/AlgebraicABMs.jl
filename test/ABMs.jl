@@ -30,7 +30,7 @@ rem_loop = ABMRule(:RemLoop, Rule(delete(Graph(1)), id(Graph(1))), DiscreteHazar
 @test rem_loop.pattern_type == RegularP()
 
 # •→• ⇽ • → •
-rem_edge = ABMRule(:RemEdge, Rule(homomorphism(Graph(2), path_graph(Graph, 2); monic=true), 
+rem_edge = ABMRule(:RemEdge, Rule(homomorphism(Graph(2), path_graph(Graph, 2); initial=(V=1:2,)), 
                         id(Graph(2))), 
                    ContinuousHazard(1))
 @test rem_edge.pattern_type == RepresentableP(Dict(:E=>[1]))
@@ -73,7 +73,7 @@ using AlgebraicABMs, AlgebraicRewriting, Catlab
 # Rule: copy a variable
 v = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end
 v2 = @acset LSet begin X=2; D=1; f=[AttrVar(1), AttrVar(1)] end
-dup_vertex = ABMRule(Rule(id(v), homomorphism(v, v2)), DiscreteHazard(1.))
+dup_vertex = ABMRule(Rule(id(v), homomorphism(v, v2; initial=(X=[1],))), DiscreteHazard(1.))
 
 # Dynamics: for an individual variable, it grows linearly w/ time
 flow = ABMFlow(v, RawODE([_ -> 1.0]), :Grow, [], [(:D => 1)])

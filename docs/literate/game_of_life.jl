@@ -415,7 +415,6 @@ match_coords(birth, G)
 # This is easy! Pass in our model and our initial state. We optionally could 
 # limit the run via some maximum number of steps or time, but this one will 
 # achieve steady state within 3 time steps.
-
 res = run!(GoL_coords, G);
 
 # ## View results
@@ -478,3 +477,40 @@ imgs[13]
 # 
 
 imgs[14]
+
+# ## Bonus: stochastic game of life
+
+#=
+Rather than having all cells update in lockstep, we could change the probability
+of firing from a Dirac delta distribution at t=1 to an exponential distribution,
+where the expected value is firing at t=1. This means cells will update one at 
+a time, as it is almost impossible for two events to occur at the same time.
+The change involved for this is simply replacing the `DiscreteHazard` of 
+`TickRule` with a `ContinuousHazard`.
+=#
+
+continuous_abm = ABM([ABMRule(r.name, r.rule, ContinuousHazard(1)) for r in GoL_coords.rules]) 
+
+res = run!(continuous_abm, G; maxevent=5)
+imgs = view(res, view_life);
+
+# Here is our starting point.
+
+imgs[1]
+
+# Let's look at the next few steps.
+
+imgs[2]
+
+# Then
+
+imgs[3]
+
+# Then
+
+imgs[4]
+
+# Then
+
+imgs[5]
+

@@ -342,7 +342,7 @@ w_eat_l = @acset_colim yLV begin
   s::Sheep; w::Wolf; sheep_loc(s) == wolf_loc(w)
 end;
 
-we_rule = Rule(hom(W⊕D, w_eat_l), id(W⊕D); 
+we_rule = Rule(hom(W⊕D, w_eat_l; any=true), id(W⊕D); 
                expr=(Eng=[((vₛ, vᵩ),) -> vᵩ + 20],));
 
 # #### Wolf eating test
@@ -363,7 +363,7 @@ rem_part!(expected, :Sheep, 1)
 
 # ### Sheep starvation
 s_die_l = @acset_colim yLV begin s::Sheep; sheep_eng(s) == 0 end;
-sheep_die_rule = Rule(hom(G⊕D, s_die_l), id(G⊕D));
+sheep_die_rule = Rule(hom(G⊕D, s_die_l; any=true), id(G⊕D));
   
 # #### Sheep starvation test
 ex = @acset_colim yLV begin 
@@ -383,8 +383,8 @@ s_reprod_r = @acset_colim yLV begin
 end;
 
 sheep_reprod_rule = Rule(
-  hom(G⊕D, S),
-  hom(G⊕D, s_reprod_r);
+  hom(G⊕D, S; any=true),
+  hom(G⊕D, s_reprod_r; any=true);
   expr=(Dir=fill(vs->only(vs) ,2), 
         Eng=fill(vs -> round(Int, vs[1] / 2, RoundUp), 2),)
 );

@@ -4,8 +4,9 @@
 # The first step of running a Julia program is to load the external libraries 
 # one will be using. We do this with a `using` statement.
 
-using AlgebraicABMs, Catlab, AlgebraicRewriting
+using AlgebraicABMs, Catlab, AlgebraicRewriting, Random
 ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # hide
+Random.seed!(100)
 
 #=
 ## Schema 

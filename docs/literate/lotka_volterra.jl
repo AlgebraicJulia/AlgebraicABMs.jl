@@ -67,13 +67,13 @@ well as be oriented in a particular direction.
 end;
 
 #=
-The vertices (patches of grass) have a "countdown" attribute,
-which measures how long it takes until the grass is ready to eat at a location. 
+A set of time counters are associated with vertices via "countdown"
+which tracks how long it takes until the grass is ready to eat at a location. 
 =#
 
 @present SchWSG <: SchWS begin
-  Countdown::AttrType
-  countdown::Attr(V, Countdown)
+  Time::Ob
+  countdown::Hom(Time, V)
 end;
 
 #=
@@ -87,7 +87,7 @@ eating food.
   sheep_eng::Attr(Sheep, Eng)
 end;
 
-@acset_type LV(SchLV){Int, Int} <: AbstractSymmetricGraph # Create LV datatype
+@acset_type LV(SchLV){Int} <: AbstractSymmetricGraph # Create LV datatype
 
 to_graphviz(SchLV; prog="dot")
 
@@ -108,7 +108,7 @@ model with the LV_viz schema.
   dirname::Attr(Direction, Name)
 end
 
-@acset_type LV_Viz(SchLV_Viz){Int, Int, Tuple{Int,Int}, String} <: AbstractSymmetricGraph
+@acset_type LV_Viz(SchLV_Viz){Int, Tuple{Int,Int}, String} <: AbstractSymmetricGraph
 
 const LV′ = Union{LV, LV_Viz};
 
@@ -124,7 +124,8 @@ function create_grid(n::Int)::LV_Viz
   N, W, S, E = add_parts!(lv, :Direction, 4; left=[2,3,4,1], right=[4,1,2,3], # hide
                           dirname=["N","W","S","E"]) # hide
   for i in 0:n-1, j in 0:n-1 # hide
-    coords[i=>j] = add_vertex!(lv; countdown=max(0, rand(-30:30)), coord=(i,j)) # hide
+    coords[i=>j] = add_vertex!(lv; coord=(i,j)) # hide
+    add_parts!(lv, :Time, max(0, rand(-30:30)); countdown=coords[i=>j]) # hide
   end # hide
   for i in 0:n-1, j in 0:n-1 # hide
     _, e = add_edge!(lv, coords[i=>j], coords[mod(i + 1, n)=>j]; dir=E) # hide
@@ -166,7 +167,7 @@ function view_LV(p::LV′, pth=tempname(); name="G", title="")
   pstr = ["$(i),$(j)!" for (i, j) in p[:coord]] # hide
   stmts = Statement[] # hide
   for s in 1:nv(p) # hide
-    gv = p[s, :countdown] # hide
+    gv = length(incident(p, s, :countdown)) # hide
     col = gv == 0 ? "lightgreen" : "tan" # hide
     push!(stmts, Node("v$s", Attributes( # hide
       :label => gv == 0 ? "" : string(gv), :shape => "circle", # hide
@@ -275,7 +276,7 @@ sheep_rr = Rule(DVS_N, DVS_W);
 
 # #### Test rotation
 ex = @acset_colim yLV begin
-  e::E; s::Sheep; countdown(src(e)) == 0; countdown(tgt(e)) == 0
+  e::E; s::Sheep;
   sheep_loc(s)==src(e); sheep_eng(s)==100; dir(e)==left(sheep_dir(s))
 end;
 
@@ -305,7 +306,6 @@ sheep_fwd_rule = Rule(first(homs(E, s_fwd_l; monic=true)),
 ex = @acset_colim yLV begin
   (e1,e2)::E; (s::Sheep)
   src(e2)==tgt(e1); sheep_loc(s)==src(e1)
-  countdown(src(e1))==0; countdown(tgt(e1))==0; countdown(tgt(e2))==0
   sheep_eng(s)==10
   sheep_dir(s)==dir(e1); dir(e1)==left(dir(e2))
 end
@@ -317,24 +317,29 @@ expected[1, :sheep_eng] = 9
 
 
 # ### Sheep eat grass
-
-s_eat_L = @acset_colim yLV begin s::Sheep; countdown(sheep_loc(s)) == 0 end;
-s_eat_R = @acset_colim yLV begin s::Sheep; countdown(sheep_loc(s)) == 30 end;
-se_rule = Rule(hom(S, s_eat_L), hom(S, s_eat_R); expr=(Eng=[((vₛ,),) -> vₛ + 4],));
+s_eat_N = @acset_colim yLV begin 
+  s::Sheep; t::Time; countdown(t) == sheep_loc(s) 
+end
+s_eat_L = @acset_colim yLV begin s::Sheep;  end;
+s_eat_R = deepcopy(s_eat_L)
+add_parts!(s_eat_R, :Time, 30; countdown=1)
+se_left = hom(G⊕D, s_eat_L; initial=(Direction=1:4,))
+se_right = hom(G⊕D, s_eat_R;  initial=(Direction=1:4,))
+se_nac = hom(s_eat_L, s_eat_N)
+se_rule = Rule(se_left, se_right; 
+               ac=[AppCond(se_nac, false)], expr=(Eng=[((vₛ,),) -> vₛ + 4],));
 
 # #### Sheep eating test
 ex = @acset_colim yLV begin
-  e::E; s::Sheep
-  dir(e)==sheep_dir(s); countdown(src(e))==10; countdown(tgt(e)) == 0
+  e::E; s::Sheep; t::Time
+  dir(e)==sheep_dir(s); countdown(t)==src(e);
   sheep_loc(s)==tgt(e); sheep_eng(s) == 3
 end
 
 expected = copy(ex)
-expected[2,:countdown] = 30
+add_parts!(expected, :Time, 30; countdown=2)
 expected[1,:sheep_eng] = 7
-
 @test is_isomorphic(expected, rewrite(se_rule, ex))
-  
 
 # ### Wolves eat sheep
 
@@ -342,13 +347,15 @@ w_eat_l = @acset_colim yLV begin
   s::Sheep; w::Wolf; sheep_loc(s) == wolf_loc(w)
 end;
 
-we_rule = Rule(hom(W⊕D, w_eat_l; any=true), id(W⊕D); 
+we_left = hom(G⊕D⊕D, w_eat_l; initial=(Direction=Dict(1=>1, 5=>5),))
+we_right = hom(G⊕D⊕D, D⊕W; initial=(Direction=Dict(1=>1, 5=>5),))
+we_rule = Rule(we_left, we_right; 
                expr=(Eng=[((vₛ, vᵩ),) -> vᵩ + 20],));
 
 # #### Wolf eating test
 ex = @acset_colim yLV begin 
-  (s::Sheep); (w::Wolf); (e::E); 
-  countdown(src(e))==9; countdown(tgt(e))==10
+  (s::Sheep); (w::Wolf); (e::E); (t1,t2,t3)::Time
+  countdown(t1)==src(e); countdown(t2)==src(e); countdown(t3)==tgt(e)
   sheep_dir(s)==left(wolf_dir(w))
   sheep_dir(s)==right(dir(e))
   sheep_eng(s)==3; wolf_eng(w)==16
@@ -367,8 +374,8 @@ sheep_die_rule = Rule(hom(G⊕D, s_die_l; any=true), id(G⊕D));
   
 # #### Sheep starvation test
 ex = @acset_colim yLV begin 
-  s::Sheep; w::Wolf
-  countdown(sheep_loc(s))==20; countdown(wolf_loc(w))==10
+  s::Sheep; w::Wolf; (t,t2)::Time
+  countdown(t)==sheep_loc(s); countdown(t2)==wolf_loc(w)
   sheep_eng(s)==0; wolf_eng(w)==10; sheep_dir(s) == right(wolf_dir(w))
 end
 expected = copy(ex)
@@ -392,8 +399,8 @@ sheep_reprod_rule = Rule(
 # #### Reproduction test
 
 ex = @acset_colim yLV begin 
-  s::Sheep; w::Wolf
-  countdown(sheep_loc(s))==20; countdown(wolf_loc(w))==10
+  s::Sheep; w::Wolf; t::Time
+  countdown(t)==sheep_loc(s);
   sheep_eng(s)==10; wolf_eng(w)==20; sheep_dir(s) == right(wolf_dir(w))
 end
 
@@ -410,21 +417,16 @@ can_match(sheep_reprod_rule, m)
 
 # ### Grass increments
 
-g_inc_n = @acset LV begin V=1; countdown=0 end
-
-g_inc_rule = Rule(G; ac=[AppCond(hom(G, g_inc_n), false)],
-                  expr=(Countdown=[((vᵥ,),) -> vᵥ - 1],));
+g_inc_L = @acset_colim yLV begin t::Time end
+rem_time = hom(G, g_inc_L)
+g_inc_rule = Rule(rem_time, id(G));
 
 # #### Grass incrementing test
 ex = @acset_colim yLV begin
-  e::E; countdown(src(e)) == 0; countdown(tgt(e)) == 2
+  e::E; t::Time; countdown(t) == tgt(e)
 end
 
-expected = @acset_colim yLV begin
-  e::E; countdown(src(e)) == 0; countdown(tgt(e)) == 1
-end
-
-@test is_isomorphic(rewrite(g_inc_rule, ex), expected)
+@test is_isomorphic(rewrite(g_inc_rule, ex), E)
 
 # # Adding timers to the rules and making the model
 

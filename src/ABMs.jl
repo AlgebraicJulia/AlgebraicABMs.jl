@@ -55,7 +55,7 @@ A closure which accepts a match morphism and returns a hazard_rate. This is a
 timer which cannot depend on the absolute clock time.
 """
 struct ClosureState <: StateDependentTimer
-  val::Function # clocktime → hazard_rate
+  val::Function # ACSetTransformation → hazard_rate
 end
 
 (c::ClosureState)(m::ACSetTransformation) = c.val(m)
@@ -73,9 +73,8 @@ DiscreteHazard(t::Number) = DiscreteHazard(Dirac(t))
 end
 
 """Check if a hazard rate is a simple exponential"""
-is_exp(::Distributions.Exponential) = true
 is_exp(h::ContinuousHazard) = h.val isa Distributions.Exponential
-is_exp(h::AbsHazard) = false
+is_exp(h::AbsTimer) = false
 
 ContinuousHazard(p::Number) = ContinuousHazard(Exponential(p))
 
@@ -193,7 +192,7 @@ function get_hazard(r::RepresentableP, f::ACSetTransformation, ::Float64,
                     h::ContinuousHazard) 
    err = "Representable patterns must have simple exponential rules"
    X = codom(f)
-   is_exp(h.val) ? Exponential(h.val.θ/multiplier(r,X)) : error(err)
+   is_exp(h) ? Exponential(h.val.θ/multiplier(r,X)) : error(err)
 end
 
 const Maybe{T} = Union{Nothing, T}

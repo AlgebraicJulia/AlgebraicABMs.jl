@@ -26,7 +26,7 @@ PetriInterface = "AlgebraicPetri"
 
 [compat]
 AlgebraicPetri = "0.9"
-AlgebraicRewriting = "^0.3.5"
+AlgebraicRewriting = "^0.3.5, 0.4"
 Catlab = "^0.16.11"
 CompetingClocks = "0.1"
 DataStructures = "0.18"

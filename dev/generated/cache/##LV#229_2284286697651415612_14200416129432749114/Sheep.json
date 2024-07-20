@@ -1,0 +1,1 @@
+{"V":[{"_id":1}],"E":[],"Direction":[{"_id":1,"left":3,"right":2},{"_id":2,"left":1,"right":4},{"_id":3,"left":4,"right":1},{"_id":4,"left":2,"right":3}],"Wolf":[],"Sheep":[{"_id":1,"sheep_loc":1,"sheep_dir":1,"sheep_eng":{"_var":1}}],"Time":[],"Eng":[{"_id":1}]}

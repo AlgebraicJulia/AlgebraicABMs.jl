@@ -1,1 +1,0 @@
-{"V":[{"_id":1,"countdown":{"_var":1}}],"E":[],"Direction":[{"_id":1,"left":3,"right":2},{"_id":2,"left":1,"right":4},{"_id":3,"left":4,"right":1},{"_id":4,"left":2,"right":3}],"Wolf":[{"_id":1,"wolf_loc":1,"wolf_dir":1,"wolf_eng":{"_var":1}}],"Sheep":[],"Countdown":[{"_id":1}],"Eng":[{"_id":1}]}

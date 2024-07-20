@@ -1,1 +1,0 @@
-{"V":[],"E":[],"Direction":[{"_id":1,"left":3,"right":2,"dirname":{"_var":2}},{"_id":2,"left":1,"right":4,"dirname":{"_var":3}},{"_id":3,"left":4,"right":1,"dirname":{"_var":4}},{"_id":4,"left":2,"right":3,"dirname":{"_var":1}}],"Wolf":[],"Sheep":[],"Countdown":[],"Eng":[],"Coord":[],"Name":[{"_id":1},{"_id":2},{"_id":3},{"_id":4}]}

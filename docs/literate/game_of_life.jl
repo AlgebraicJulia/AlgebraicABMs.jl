@@ -4,7 +4,7 @@
 # The first step of running a Julia program is to load the external libraries 
 # one will be using. We do this with a `using` statement.
 
-using AlgebraicABMs, Catlab, AlgebraicRewriting, Random
+using AlgebraicABMs, Catlab, AlgebraicRewriting, Random, Test
 ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # hide
 Random.seed!(100)
 
@@ -416,7 +416,8 @@ match_coords(birth, G)
 # This is easy! Pass in our model and our initial state. We optionally could 
 # limit the run via some maximum number of steps or time, but this one will 
 # achieve steady state within 3 time steps.
-res = run!(GoL_coords, G; maxevent=1);
+res = run!(GoL_coords, G);
+@test length(res) == 13
 
 # ## View results
 

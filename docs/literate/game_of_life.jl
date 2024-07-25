@@ -6,7 +6,7 @@
 
 using AlgebraicABMs, Catlab, AlgebraicRewriting, Random, Test
 ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # hide
-Random.seed!(100)
+Random.seed!(100); # hide
 
 #=
 ## Schema 
@@ -390,7 +390,7 @@ GoL_coords = AddCoords(GoL);
 view_life(G)
 
 # This code below counts how many matches a rule has, application conditions 
-# considered. It returns the coordinatees of those matches.
+# considered. It returns the coordinates of those matches.
 
 match_coords(f::ACSetTransformation) =  codom(f)[f[:V](1), :coords]
 match_coords(rule::ABMRule, X) = match_coords.(get_matches(AddCoords(rule), X));

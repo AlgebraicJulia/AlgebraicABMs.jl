@@ -493,7 +493,7 @@ The change involved for this is simply replacing the `DiscreteHazard` of
 
 continuous_abm = ABM([ABMRule(r.name, r.rule, ContinuousHazard(1)) for r in GoL_coords.rules]) 
 
-res = run!(continuous_abm, G; maxevent=5)
+res = run!(continuous_abm, make_grid(4); maxevent=3)
 imgs = view(res, view_life);
 
 # Here is our starting point.

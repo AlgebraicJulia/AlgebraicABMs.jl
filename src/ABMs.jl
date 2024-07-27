@@ -500,7 +500,8 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
           m = pull_back(l, m) ⋅ r
         end
         dpo = rule_type == :DPO ? (left(rule′), m) : nothing
-
+        # check if dangling condition is satisfied
+        isnothing(dpo) || can_pushout_complement(ComposablePair(dpo...)) || continue
         # Excute rewrite rule and unpack results
         rw_result = (rule_type, rewrite_match_maps(rule′, m))
         rmap_ = get_rmap(rw_result...)
@@ -512,6 +513,9 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
         log!(event, pmap)      # record event result
         push!(update_data, (pmap, rmap, dpo, right(rule′)))
       end
+      
+      # if no event at this time was actionable, due to dangling condition
+      isempty(update_data) && continue 
 
       # All other rules can potentially update in response to the current event
       for (i, (ruleᵢ, clocksᵢ)) in enumerate(zip(abm.rules, rt.clocks))

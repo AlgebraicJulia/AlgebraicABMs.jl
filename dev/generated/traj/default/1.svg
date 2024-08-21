@@ -9,7 +9,7 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 151.27)">
 <title>G</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-151.27 419,-151.27 419,4 -4,4"/>
-<text text-anchor="middle" x="207.5" y="-132.07" font-family="Times,serif" font-size="14.00">Step 1 @ t=0.002705337485167733: Event GrassGrow</text>
+<text text-anchor="middle" x="207.5" y="-132.07" font-family="Times,serif" font-size="14.00">Step 1 @ t=0.001853102877128594: Event GrassGrow</text>
 <!-- v1 -->
 <g id="node1" class="node">
 <title>v1</title>

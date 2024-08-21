@@ -4,6 +4,8 @@ module Upstream
 using Catlab, AlgebraicRewriting
 import Catlab: is_isomorphic, Presentation
 using AlgebraicRewriting.Rewrite.Migration: pres_hash
+import AlgebraicRewriting: IncHomSet
+using AlgebraicRewriting.Incremental.IncrementalConstraints: AC, PAC, NAC
 using CompetingClocks: FirstToFire, disable!, next
 using Distributions: AbstractRNG
 
@@ -28,6 +30,20 @@ end
 
 # Upstream to AlgRewriting
 ##########################
+"""Optionally use a different pattern than the L of the rule"""
+function IncHomSet_basis(rule::Rule{T}, state::ACSet, additions=ACSetTransformation[]; 
+                         basis=nothing) where T
+  pac, nac = [], []
+  dpo = (T == :DPO) ? [left(rule)] : ACSetTransformation[]
+  right(rule) ∈ additions || push!(additions, right(rule))
+  for c in AC.(rule.conditions, Ref(additions), Ref(dpo))
+    c isa PAC && push!(pac, c)
+    c isa NAC && push!(nac, c)
+  end
+  pat = isnothing(basis) ? codom(left(rule)) : basis
+  IncHomSet(pat, additions, state; monic=rule.monic, pac, nac)
+end
+
 
 # CompetingClocks
 #################

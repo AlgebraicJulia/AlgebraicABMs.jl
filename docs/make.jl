@@ -54,6 +54,7 @@ makedocs(
   pages=Any[
     "AlgebraicABMs.jl"=>"index.md",
     "Examples"=>Any[
+     "generated/showcase.md",
       "generated/sir_petri.md",
       "generated/game_of_life.md",
       "generated/lotka_volterra.md",

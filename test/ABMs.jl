@@ -62,8 +62,28 @@ create_vert = ABMRule(Rule(id(Graph()),  create(Graph(1))), DiscreteHazard(1.));
 abm = ABM([create_loop, create_vert]);
 traj = run!(abm, Graph(); maxtime=5);
 
-# ODEs
-######
+
+# Basis
+#######
+using AlgebraicABMs, Catlab, AlgebraicRewriting
+
+# Rule which fires once per vertex (it tries to add an edge to an 
+# arbitrary other vertex) - rate is based on vertex pattern, not pattern for 
+# the rule itself, which has two 
+add_edge = ABMRule(Rule(id(Graph(2)), 
+                        homomorphism(Graph(2), path_graph(Graph, 2); 
+                                     any=true, monic=true)),
+                   DiscreteHazard(1.),
+                   basis=homomorphism(Graph(1), Graph(2); any=true))
+abm = ABM([add_edge])
+rt = RuntimeABM(abm, Graph(3))
+traj = run!(abm, Graph(3); maxtime=3);
+
+view(traj, graphviz_write)
+
+
+# ODEs (IN PROGRESS)
+#####################
 using AlgebraicABMs, AlgebraicRewriting, Catlab
 
 # State of world: a set of free-floating Float64s 

@@ -57,6 +57,7 @@ makedocs(
       "generated/sir_petri.md",
       "generated/game_of_life.md",
       "generated/lotka_volterra.md",
+      "generated/labor_model.md"
     ],
     "Library Reference"=>"api.md",
   ]

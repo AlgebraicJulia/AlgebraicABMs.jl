@@ -4,6 +4,7 @@
 # First, we load the necessary libraries from AlgebraicJulia and elsewhere.
 
 using AlgebraicABMs, Catlab, AlgebraicRewriting, Random, Test, Plots, DataFrames, DataMigrations
+using Catlab: to_graphviz
 import Distributions: Exponential, LogNormal
 using AlgebraicRewriting: Migrate
 using Pipe: @pipe
@@ -23,7 +24,9 @@ Random.seed!(123); # hide
   employee::Hom(Job, Person)
   employer::Hom(Job, Firm)
   advertised_by::Hom(Vacancy, Firm)
-end
+end;
+
+to_graphviz(FirmDemographySchema) # hide
 
 
 # We then create a Julia Type for instances of this schema.  Re-running this line of code in the same REPL
@@ -42,31 +45,38 @@ end
 #  
 # The "representable" Person and Firm are what we would expect - single instances of
 # the relevant entity, and nothing else. 
-P = representable(FirmDemographyAge, :Person)
-F = representable(FirmDemographyAge, :Firm)
+P = representable(FirmDemographyAge, :Person);
+P |> elements |> to_graphviz # hide
+#
+F = representable(FirmDemographyAge, :Firm);
+F |> elements |> to_graphviz # hide
+
 
 # The representable vacancy, however, comes with a function defined on it, and that
 # function needs a target.  To make a well-defined ACSet conforming to our schema, 
 # the representable Vacancy has to have both a vacancy and a firm, with a function
 # mapping the former to the latter.
-V = representable(FirmDemographyAge, :Vacancy)
+V = representable(FirmDemographyAge, :Vacancy);
+V |> elements |> to_graphviz # hide
 
 # The representable Job, in turn, has two functions pointing from it, so it has to
 # include both a Person and a Firm.
-J = representable(FirmDemographyAge, :Job)
+J = representable(FirmDemographyAge, :Job);
+J |> elements |> to_graphviz # hide
 
 # Joining these instances together in the obvious way is known as taking their coproduct,
 # and has been implemented using the "oplus" symbol.
 
-P⊕F
+P⊕F |> elements |> to_graphviz
 
-P⊕F⊕V⊕J
+P⊕F⊕V⊕J |> elements |> to_graphviz
 
 # The coproduct has a "unit", defined here using the imperative syntax, consisting of
 # the "empty" instance of that schema.  We follow convention by denoting it with the
 # letter O, and define it using the imperative syntax.
 
-O = @acset FirmDemographyAge begin end
+O = @acset FirmDemographyAge begin end;
+O |> elements |> to_graphviz # hide
 
 # Instances that can be formed using oplus and the generic members of the objects are 
 # known as "coproducts of representables".  One advantage of constructing our instances
@@ -77,14 +87,16 @@ O = @acset FirmDemographyAge begin end
 # constraints.  The macro @acset_colim allows us to do this, if we give it a cached collection
 # of all of the representables for our schema. 
 
-yF = yoneda_cache(FirmDemographyAge)
+yF = yoneda_cache(FirmDemographyAge);
 
 
 employer_also_hiring = @acset_colim yF begin
 	j1::Job
 	v1::Vacancy 
 	employer(j1) == advertised_by(v1)
-end
+end; 
+
+employer_also_hiring |> elements |> to_graphviz # hide
 
 # Now that we are able to construct instances of our schema - which we can think of as
 # states of (part of) the world at given points in time - we can define the types of 
@@ -113,69 +125,69 @@ end
 post_vacancy = Rule{:DPO}(
 	id(F),
 	homomorphism(F, V)
-)
+);
 
 withdraw_vacancy = Rule{:DPO}(
 	homomorphism(F, V),
 	id(F)
-)
+);
 
 
 # People can appear out of nothing ...
 birth = Rule{:DPO}(
   id(O),
   homomorphism(O, P)
-)
+);
 
 # ... and unto nothing they shall return.  This rule uses Single Pushout rewriting,
 # because we want to eliminate any jobs which point to the now-defunct person.
 death = Rule{:SPO}(
 	homomorphism(O, P),
 	id(O)
-)
+);
 
 # Firms come and go in the same way, like Soho Italian restaurants in a Douglas Adams novel.
 
 firm_entry = Rule{:DPO}(
   id(O),
   homomorphism(O, F)
-)
+);
 
-rewrite(firm_entry, O)
+rewrite(firm_entry, O) |> elements |> to_graphviz
 
 firm_exit = Rule{:SPO}(
 	homomorphism(O, F),
 	id(O)
-)
+);
  
 # To make an ABM, we wrap a rule in a named container with a probability distribution over
 # how long it takes to "fire".  A model is created from a list of these wrapped rules.  To
 # demonstrate, we make a trivial model to show a population converging to a steady state based
 # on constant birth and mortality hazards.  
 
-birth_abm_rule = ABMRule(:Birth, birth, ContinuousHazard(1/50))
-death_abm_rule = ABMRule(:Death, death, ContinuousHazard(1))
+birth_abm_rule = ABMRule(:Birth, birth, ContinuousHazard(1/50));
+death_abm_rule = ABMRule(:Death, death, ContinuousHazard(1));
 
-people_only_abm = ABM([birth_abm_rule, death_abm_rule])
+people_only_abm = ABM([birth_abm_rule, death_abm_rule]);
 
 # We'll need an initial state to run our ABM, in this case simply a number of people.
 # We can form this using either of the interfaces for producing instances of our schema.
 
-start = O
-for _ in 1:100
-	start = start ⊕ P
-end
+# start_acset = O
+# for _ in 1:100
+#  start_acset = start_acset ⊕ P
+# end
 
-imperatively_assembled_start = @acset FirmDemographyAge begin end
-for _ in 1:100
-	add_part!(imperatively_assembled_start, :Person)
-end
+# imperatively_assembled_start = @acset FirmDemographyAge begin end;
+# for _ in 1:100
+# 	add_part!(imperatively_assembled_start, :Person)
+# end;
 
-@test start == imperatively_assembled_start
+# @test start_acset == imperatively_assembled_start
 
 # We now have everything we need to run an ABM.
 
-results = run!(people_only_abm, start; maxtime=100) 
+# results = run!(people_only_abm, start; maxtime=100) 
 
 # Most of us will be a little more comfortable handling the resulting ABM trajectory 
 # in the form of a dataframe.
@@ -184,33 +196,30 @@ function unpack_results(results::AlgebraicABMs.ABMs.Traj)
   event_times = cat([0.0], [e[1] for e in results.events]; dims=1)
   states_of_the_world = cat([results.init], [codom(right(h)) for h in results.hist], dims=1)
   DataFrame(time = event_times, state = states_of_the_world)
-end
+end;
 
 function obj_counts(abm_state::FirmDemographyAge)
   [k => length(v)
     for (k, v) in 
     zip(keys(abm_state.parts), abm_state.parts)
   ] |> NamedTuple 
-end
+end;
 
 function full_df(results::AlgebraicABMs.ABMs.Traj)
   state_time_df = unpack_results(results)
   obj_counts_df = obj_counts.(state_time_df.state) |> DataFrame
   hcat(state_time_df, obj_counts_df)
-end
+end;
 
 function plot_full_df(df::DataFrame)
   Plots.plot(df.time, [df.Person, df.Firm, df.Job, df.Vacancy]; labels=["Person" "Firm" "Job" "Vacancy"])
-end
+end;
 
-full_df(results)
+# full_df(results)
 
 # If we run the same ABM on an initial state which has Firms in it, they just sit there, untouched by
 # either of the ABM rules.
 
-run!(people_only_abm, start⊕F⊕F; maxtime=100) |>
-	full_df |>
-	plot_full_df
 
 # To give the firms their own dynamics, we include two more ABM rules, using the firm entry and exit
 # patterns defined above.  We can do the same to generate a steady state of vacancies.
@@ -223,11 +232,8 @@ people_and_firms_abm = ABM(
 			ABMRule(:WithdrawVacancy, withdraw_vacancy, ContinuousHazard(1))
 		]
 	]
-)
+);
 
-run!(people_and_firms_abm, start⊕F⊕F; maxtime=100) |>
-	full_df |>
-	plot_full_df 
 
 # Hiring, however, presents a new challenge.  We want to convert a
 # person and vacancy-firm pair to a person and firm connected by a job, with the person
@@ -246,7 +252,7 @@ hire = Rule{:DPO}(
 	ac = [
 	  AppCond(homomorphism(P⊕V, J⊕V), false)#, # Limit one job per person
 	]
-)
+);
 
 
 # Separations occur when we match a connected Person-Firm-Job triple and the person
@@ -254,7 +260,7 @@ hire = Rule{:DPO}(
 fire = Rule{:DPO}(
 	homomorphism(P⊕F, J),
   id(P⊕F)
-)
+);
 
 # We assume at first that hiring and firing occur at constant rates.
 constant_job_dynamics_abm = ABM(
@@ -265,7 +271,7 @@ constant_job_dynamics_abm = ABM(
       ABMRule(:Fire, fire, ContinuousHazard(1))
     ]
   ]
-)
+);
 
 
 # In particular, we care about how many people don't have jobs.
@@ -274,24 +280,20 @@ function number_unemployed(state_of_world::FirmDemographyAge)
 		p for p in state_of_world.parts.Person
 		if length(incident(state_of_world, p, :employee)) == 0
 	])
-end
+end;
 
-@pipe run!(constant_job_dynamics_abm, start⊕F⊕F; maxtime=100) |>
-	full_df(_) |>
-	transform(_, [:state, :Person] => ByRow((s, p) -> number_unemployed(s)/p * 100) => :unemployment_rate) |>
-	(x -> Plots.plot(x.time, x.unemployment_rate))
 
 # Following the literature, we measure the interplay of supply and demand
 # in the labour market using this "market tightness" ratio.
 
 function market_tightness(state_of_world::FirmDemographyAge)
   length(state_of_world.parts.Vacancy)/number_unemployed(state_of_world)
-end
+end;
 
 # This may come in handy for defining distributions
 function logistic_function(L, k)
   (x -> L / (1 + exp(-k*x)))
-end
+end;
 
 # In order to make our model a little more interesting, we can make the likelihood of a worker
 # filling a vacancy depend on supply and demand via a function of market tightness, as defined
@@ -306,21 +308,14 @@ dependent_match_function = (
 	  q = logistic_function(2, 1)(v_over_u)  # decreasing function, elasticity between 0 and -1
 	  Exponential(1/q)
   end
-) |> ClosureState 
+) |> ClosureState; 
 
-δ_u = 10*0.01600000001
-δ_v = 10*0.01200000001
+δ_u = 10*0.01600000001;
+δ_v = 10*0.01200000001;
 
 full_abm = ABM([
 	[r for r in constant_job_dynamics_abm.rules if r.name != :Hire];
   [ABMRule(:Hire, hire, dependent_match_function)]
 ])
 
-@pipe run!(full_abm, start⊕F⊕F; maxtime=100) |>
-	full_df(_) |>
-	transform(_, [:state, :Person] => ByRow((s, p) -> number_unemployed(s)/p * 100) => :unemployment_rate) |>
-	transform(_, :state => ByRow((s) -> market_tightness(s)) => :market_tightness) |>	
-	transform(_, :market_tightness => ByRow(x -> log(x)) => :ln_market_tightness) |>
-  transform(_, :unemployment_rate => ByRow(x -> log(x)) => :ln_unemployment_rate) |>
-  (x -> Plots.plot(x.unemployment_rate, x.market_tightness))(_)
-    
+

@@ -1,4 +1,4 @@
-# # Labour Market Search and Matching
+  # # Labor Market Search and Matching
 # ## Set-up
 #
 # First, we load the necessary libraries from AlgebraicJulia and elsewhere.
@@ -6,8 +6,8 @@
 using AlgebraicABMs, Catlab, AlgebraicRewriting, Random, Test, Plots, DataFrames, DataMigrations
 using Catlab: to_graphviz
 import Distributions: Exponential, LogNormal
-using AlgebraicRewriting: Migrate
 using Pipe: @pipe
+
 
 ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # hide
 Random.seed!(123); # hide
@@ -29,8 +29,8 @@ end;
 to_graphviz(FirmDemographySchema) # hide
 
 
-# We then create a Julia Type for instances of this schema.  Re-running this line of code in the same REPL
-# session will throw an error.
+# We then create a Julia Type `FirmDemographyAge` for instances of this schema.  Re-running this line of code in the same REPL
+# session after making any changes to the definition of the schema will throw an error.
 @acset_type FirmDemographyAge(FirmDemographySchema);
 
 # Having defined the schema, we will build our model(s) by constructing particular 
@@ -41,7 +41,9 @@ to_graphviz(FirmDemographySchema) # hide
 # element based on the transformations between instances, rather than the implementation 
 # "under the hood".  We can specify some basic elements of our instances by taking the
 # freely constucted minimal example of each of our entities 
-# ("objects" - but not in the sense of Object-Oriented Programming).
+# ("objects" - but not in the sense of Object-Oriented Programming).  This creates a "generic"
+# instance of the chosen entity, which in particular doesn't force any two objects to be the
+# same when they don't have to be.
 #  
 # The "representable" Person and Firm are what we would expect - single instances of
 # the relevant entity, and nothing else. 
@@ -52,10 +54,9 @@ F = representable(FirmDemographyAge, :Firm);
 F |> elements |> to_graphviz # hide
 
 
-# The representable vacancy, however, comes with a function defined on it, and that
-# function needs a target.  To make a well-defined ACSet conforming to our schema, 
-# the representable Vacancy has to have both a vacancy and a firm, with a function
-# mapping the former to the latter.
+# The representable vacancy, however, can't be just a single vacancy and nothing else.
+# To make a well-defined ACSet conforming to our schema, the representable Vacancy has 
+# to have both a vacancy and a firm, with a function mapping the former to the latter.
 V = representable(FirmDemographyAge, :Vacancy);
 V |> elements |> to_graphviz # hide
 
@@ -64,28 +65,31 @@ V |> elements |> to_graphviz # hide
 J = representable(FirmDemographyAge, :Job);
 J |> elements |> to_graphviz # hide
 
-# Joining these instances together in the obvious way is known as taking their coproduct,
-# and has been implemented using the "oplus" symbol.
+# Joining these instances together by placing them "side by side" (i.e. not forcing any 
+# entities from different ACSets to be equal to each other in the result) is known as 
+# taking their coproduct, and has been implemented using the "oplus" symbol - $\oplus$.
 
-P⊕F |> elements |> to_graphviz
-
-P⊕F⊕V⊕J |> elements |> to_graphviz
+generic_person_sidebyside_generic_firm = P⊕F
+generic_person_sidebyside_generic_firm |> elements |> to_graphviz #hide
+#  
+one_of_each_generic_thing = P⊕F⊕V⊕J
+one_of_each_generic_thing |> elements |> to_graphviz #hide
 
 # The coproduct has a "unit", defined here using the imperative syntax, consisting of
 # the "empty" instance of that schema.  We follow convention by denoting it with the
 # letter O, and define it using the imperative syntax.
 
-O = @acset FirmDemographyAge begin end;
+O = FirmDemographyAge();
 O |> elements |> to_graphviz # hide
 
 # Instances that can be formed using oplus and the generic members of the objects are 
 # known as "coproducts of representables".  One advantage of constructing our instances
 # in this way is that we always know we're dealing with well-formed ACSets, which prevents
 # cryptic errors further down the line.  However we may want to be able to express
-# situations where the same entity pays more than one role in an instance.  We can still
+# situations where the same entity plays more than one role in an instance.  We can still
 # do this by constructing a free ACSet on a number of generic objects subject to equality
-# constraints.  The macro @acset_colim allows us to do this, if we give it a cached collection
-# of all of the representables for our schema. 
+# constraints (known as a "colimit of representables").  The macro `@acset_colim` allows
+# us to do this, if we give it a cached collection of all of the representables for our schema. 
 
 yF = yoneda_cache(FirmDemographyAge);
 
@@ -103,12 +107,12 @@ employer_also_hiring |> elements |> to_graphviz # hide
 # change which can occur in our model.  These will take the form of ACSet rewriting rules,
 # which are a generalization of graph rewriting rules (since a graph can be defined as a
 # relatively simple ACSet, or indeed CSet).  We will use Double Pushout and Single Pushout
-# rewriting, which both take an input pattern of the form L <- I -> R, where L is the input 
+# rewriting, which both take an input pattern of the form  L ↢ I → R , where L is the input 
 # pattern to be matched in the existing state of the world ("Before"), R is the output
 # pattern that should exist going forward ("After") and I is the pattern of items in the
 # input match which should carry over into the output match.
 #
-# The rewrite rule is specified using a pair of ACSet transformations (I -> L and I -> R)
+# The rewrite rule is specified using a pair of ACSet transformations (I $\rightarrowtail$ L and I → R)
 # of ACSets sharing the same schema, where both transformations have the same ACSet as their
 # domain.  While the ACSet Transformations can be built using the machinery available in [...],
 # we will find in many cases that the transformations (also known as homomorphisms) between
@@ -250,7 +254,7 @@ hire = Rule{:DPO}(
 	homomorphism(P⊕F, P⊕V),
 	homomorphism(P⊕F, J);
 	ac = [
-	  AppCond(homomorphism(P⊕V, J⊕V), false)#, # Limit one job per person
+	  AppCond(homomorphism(P⊕V, J⊕V), false) # Limit one job per person
 	]
 );
 

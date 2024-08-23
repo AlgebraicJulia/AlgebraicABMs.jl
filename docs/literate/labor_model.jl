@@ -183,41 +183,41 @@ initial_state = @acset FirmDemographyAge begin
 	Person = 10
 end;
 
-# We now have everything we need to run an ABM.
+function sequence_of_states(results::AlgebraicABMs.ABMs.Traj)
+  cat([results.init], [codom(right(h)) for h in results.hist], dims=1)
+end # hide
 
-results = run!(people_only_abm, initial_state; maxtime=10)
+function event_times(results::AlgebraicABMs.ABMs.Traj)
+  cat([0.0], [e[1] for e in results.events]; dims=1)
+end # hide
 
-# Most of us will be a little more comfortable handling the resulting ABM trajectory 
-# in the form of a dataframe.
-
-function unpack_results(results::AlgebraicABMs.ABMs.Traj)
-  event_times = cat([0.0], [e[1] for e in results.events]; dims=1)
-  states_of_the_world = cat([results.init], [codom(right(h)) for h in results.hist], dims=1)
-  DataFrame(time = event_times, state = states_of_the_world)
-end;
+function unpack_results(r::AlgebraicABMs.ABMs.Traj)
+  DataFrame(
+  	time = event_times(r),
+  	state = sequence_of_states(r)
+  )
+end; # hide
 
 function obj_counts(abm_state::FirmDemographyAge)
   [k => length(v)
     for (k, v) in 
     zip(keys(abm_state.parts), abm_state.parts)
   ] |> NamedTuple 
-end;
+end; # hide
 
 function full_df(results::AlgebraicABMs.ABMs.Traj)
   state_time_df = unpack_results(results)
   obj_counts_df = obj_counts.(state_time_df.state) |> DataFrame
   hcat(state_time_df, obj_counts_df)
-end;
+end; # hide
 
 function plot_full_df(df::DataFrame)
   Plots.plot(df.time, [df.Person, df.Firm, df.Job, df.Vacancy]; labels=["Person" "Firm" "Job" "Vacancy"])
-end;
+end; # hide
 
 function plot_full_df(results::AlgebraicABMs.ABMs.Traj)
 	plot_full_df(full_df(results))
-end;
-
-plot_full_df(results)
+end; # hide
 
 # If we run the same ABM on an initial state which has Firms in it, they just sit there, untouched by
 # either of the ABM rules.
@@ -315,4 +315,42 @@ full_abm = ABM([
   [ABMRule(:Hire, hire, dependent_match_function)]
 ]);
 
+# We can then construct an acset to reflect our starting state, and run a simulation for 
+# a fixed amount of simulation time (as we do in this case) or until a fixed number of 
+# events have happened.  NB - pending an update to the Single Pushout rewriting capability 
+# ofAlgebraicABMs, we have temporarily deactivated the firm and person birth and death rules. 
 
+partial_abm = ABM(
+	filter( 
+		r -> !(r.name in [:Birth, :Death, :FirmEntry, :FirmExit]),
+		full_abm.rules
+	)
+);
+
+initial_state = @acset FirmDemographyAge begin
+	Person = 20
+	Firm = 6
+end;
+
+initial_state |> elements |> to_graphviz # hide
+
+# 
+result = run!(
+  partial_abm,
+  initial_state,
+  maxtime = 100
+);
+
+plot_full_df(result) # hide
+
+# 
+function plot_beveridge_curve(results::AlgebraicABMs.ABMs.Traj)
+	states = sequence_of_states(results)
+  Plots.plot(
+    [number_unemployed(s)/nparts(s, :Person) for s in states],
+    [market_tightness(s) for s in states],
+    xlabel = "U rate", ylabel = "V/U"
+  )
+end # hide
+
+plot_beveridge_curve(result)

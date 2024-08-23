@@ -15,7 +15,7 @@ Random.seed!(123); # hide
 # We define our Schema "from scratch" by specifying the types of objects in our model and the mappings 
 # (or "homomorphisms") between them.  
 
-@present FirmDemographySchema(FreeSchema) begin
+@present SchLaborMarket(FreeSchema) begin
 	Person::Ob
 	Job::Ob
 	Firm::Ob
@@ -26,12 +26,12 @@ Random.seed!(123); # hide
   advertised_by::Hom(Vacancy, Firm)
 end;
 
-to_graphviz(FirmDemographySchema) # hide
+to_graphviz(SchLaborMarket) # hide
 
 
 # We then create a Julia Type `FirmDemographyAge` for instances of this schema.  Re-running this line of code in the same REPL
 # session after making any changes to the definition of the schema will throw an error.
-@acset_type FirmDemographyAge(FirmDemographySchema);
+@acset_type LaborMarket(SchLaborMarket);
 
 # Having defined the schema, we will build our model(s) by constructing particular 
 # instances of this schema, and the transformations between them.  This can be done
@@ -47,22 +47,22 @@ to_graphviz(FirmDemographySchema) # hide
 #  
 # The "representable" Person and Firm are what we would expect - single instances of
 # the relevant entity, and nothing else. 
-P = representable(FirmDemographyAge, :Person);
+P = representable(LaborMarket, :Person);
 P |> elements |> to_graphviz # hide
 #
-F = representable(FirmDemographyAge, :Firm);
+F = representable(LaborMarket, :Firm);
 F |> elements |> to_graphviz # hide
 
 
 # The representable vacancy, however, can't be just a single vacancy and nothing else.
 # To make a well-defined ACSet conforming to our schema, the representable Vacancy has 
 # to have both a vacancy and a firm, with a function mapping the former to the latter.
-V = representable(FirmDemographyAge, :Vacancy);
+V = representable(LaborMarket, :Vacancy);
 V |> elements |> to_graphviz # hide
 
 # The representable Job, in turn, has two functions pointing from it, so it has to
 # include both a Person and a Firm.
-J = representable(FirmDemographyAge, :Job);
+J = representable(LaborMarket, :Job);
 J |> elements |> to_graphviz # hide
 
 # Joining these instances together by placing them "side by side" (i.e. not forcing any 
@@ -79,7 +79,7 @@ one_of_each_generic_thing |> elements |> to_graphviz #hide
 # the "empty" instance of that schema.  We follow convention by denoting it with the
 # letter O, and define it using the imperative syntax.
 
-O = FirmDemographyAge();
+O = LaborMarket();
 O |> elements |> to_graphviz # hide
 
 # Instances that can be formed using oplus and the generic members of the objects are 
@@ -91,7 +91,7 @@ O |> elements |> to_graphviz # hide
 # constraints (known as a "colimit of representables").  The macro `@acset_colim` allows
 # us to do this, if we give it a cached collection of all of the representables for our schema. 
 
-yF = yoneda_cache(FirmDemographyAge);
+yF = yoneda_cache(LaborMarket);
 
 
 employer_also_hiring = @acset_colim yF begin
@@ -179,7 +179,7 @@ people_only_abm = ABM([birth_abm_rule, death_abm_rule]);
 # We'll need an initial state to run our ABM, in this case simply a number of people.
 # We can form this using either of the interfaces for producing instances of our schema.
 
-initial_state = @acset FirmDemographyAge begin
+initial_state = @acset LaborMarket begin
 	Person = 10
 end;
 
@@ -231,7 +231,7 @@ people_and_firms_abm = ABM(
 			ABMRule(:FirmEntry, firm_entry, ContinuousHazard(1/10)),
 			ABMRule(:FirmExit, firm_exit, ContinuousHazard(1)),
 			ABMRule(:PostVacancy, post_vacancy, ContinuousHazard(1)),
-			ABMRule(:WithdrawVacancy, withdraw_vacancy, ContinuousHazard(1))
+			ABMRule(:WithdrawVacancy, withdraw_vacancy, ContinuousHazard(10))
 		]
 	]
 );
@@ -276,7 +276,7 @@ constant_job_dynamics_abm = ABM(
 );
 
 # In particular, we care about how many people don't have jobs.
-function number_unemployed(state_of_world::FirmDemographyAge)
+function number_unemployed(state_of_world::LaborMarket)
 	length([
 		p for p in state_of_world.parts.Person
 		if length(incident(state_of_world, p, :employee)) == 0
@@ -286,7 +286,7 @@ end;
 # Following the literature, we measure the interplay of supply and demand
 # in the labour market using this "market tightness" ratio.
 
-function market_tightness(state_of_world::FirmDemographyAge)
+function market_tightness(state_of_world::LaborMarket)
   length(state_of_world.parts.Vacancy)/number_unemployed(state_of_world)
 end;
 
@@ -327,7 +327,7 @@ partial_abm = ABM(
 	)
 );
 
-initial_state = @acset FirmDemographyAge begin
+initial_state = @acset LaborMarket begin
 	Person = 20
 	Firm = 6
 end;
@@ -353,4 +353,4 @@ function plot_beveridge_curve(results::AlgebraicABMs.ABMs.Traj)
   )
 end # hide
 
-plot_beveridge_curve(result)
+plot_beveridge_curve(result) # hide

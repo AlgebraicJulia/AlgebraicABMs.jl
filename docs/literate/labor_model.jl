@@ -12,6 +12,7 @@ using Pipe: @pipe
 ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # hide
 Random.seed!(123); # hide
 
+# ## Schema
 # We define our Schema "from scratch" by specifying the types of objects in our model and the mappings 
 # (or "homomorphisms") between them.  
 
@@ -29,10 +30,11 @@ end;
 to_graphviz(SchLaborMarket) # hide
 
 
-# We then create a Julia Type `FirmDemographyAge` for instances of this schema.  Re-running this line of code in the same REPL
+# We then create a Julia Type `LaborMarket` for instances of this schema.  Re-running this line of code in the same REPL
 # session after making any changes to the definition of the schema will throw an error.
 @acset_type LaborMarket(SchLaborMarket);
 
+# ## Constructing Instances
 # Having defined the schema, we will build our model(s) by constructing particular 
 # instances of this schema, and the transformations between them.  This can be done
 # by figuring out how our desired instance would be constructed in memory, and adding
@@ -102,6 +104,7 @@ end;
 
 employer_also_hiring |> elements |> to_graphviz # hide
 
+# ## Rules
 # Now that we are able to construct instances of our schema - which we can think of as
 # states of (part of) the world at given points in time - we can define the types of 
 # change which can occur in our model.  These will take the form of ACSet rewriting rules,
@@ -176,48 +179,47 @@ death_abm_rule = ABMRule(:Death, death, ContinuousHazard(1));
 
 people_only_abm = ABM([birth_abm_rule, death_abm_rule]);
 
-# We'll need an initial state to run our ABM, in this case simply a number of people.
-# We can form this using either of the interfaces for producing instances of our schema.
+# 
 
-initial_state = @acset LaborMarket begin
-	Person = 10
-end;
+function sequence_of_states(results::AlgebraicABMs.ABMs.Traj)             # hide
+  cat([results.init], [codom(right(h)) for h in results.hist], dims=1)    # hide
+end 																																			# hide
 
-function sequence_of_states(results::AlgebraicABMs.ABMs.Traj)
-  cat([results.init], [codom(right(h)) for h in results.hist], dims=1)
-end # hide
+function event_times(results::AlgebraicABMs.ABMs.Traj)									  # hide
+  cat([0.0], [e[1] for e in results.events]; dims=1)											# hide
+end 																																			# hide
 
-function event_times(results::AlgebraicABMs.ABMs.Traj)
-  cat([0.0], [e[1] for e in results.events]; dims=1)
-end # hide
+function unpack_results(r::AlgebraicABMs.ABMs.Traj) 											# hide
+  DataFrame(																															# hide
+  	time = event_times(r),																							  # hide	
+  	state = sequence_of_states(r)																				  # hide	
+  )                                                                       # hide
+end; 																																			# hide
 
-function unpack_results(r::AlgebraicABMs.ABMs.Traj)
-  DataFrame(
-  	time = event_times(r),
-  	state = sequence_of_states(r)
-  )
-end; # hide
+function obj_counts(abm_state::LaborMarket)																# hide
+  [k => length(v)																													# hide
+    for (k, v) in 																											  # hide		
+    zip(keys(abm_state.parts), abm_state.parts)														# hide
+  ] |> NamedTuple 																												# hide
+end; 																																			# hide
 
-function obj_counts(abm_state::FirmDemographyAge)
-  [k => length(v)
-    for (k, v) in 
-    zip(keys(abm_state.parts), abm_state.parts)
-  ] |> NamedTuple 
-end; # hide
+function full_df(results::AlgebraicABMs.ABMs.Traj)												# hide
+  state_time_df = unpack_results(results)																	# hide
+  obj_counts_df = obj_counts.(state_time_df.state) |> DataFrame  					# hide
+  hcat(state_time_df, obj_counts_df)																			# hide
+end; 																																			# hide
 
-function full_df(results::AlgebraicABMs.ABMs.Traj)
-  state_time_df = unpack_results(results)
-  obj_counts_df = obj_counts.(state_time_df.state) |> DataFrame
-  hcat(state_time_df, obj_counts_df)
-end; # hide
+function plot_full_df(df::DataFrame)																			# hide
+  Plots.plot(																															# hide
+  	df.time,																															# hide
+  	[df.Person, df.Firm, df.Job, df.Vacancy];															# hide
+  	 labels=["Person" "Firm" "Job" "Vacancy"]															# hide
+  )																																				# hide
+end; 																																			# hide
 
-function plot_full_df(df::DataFrame)
-  Plots.plot(df.time, [df.Person, df.Firm, df.Job, df.Vacancy]; labels=["Person" "Firm" "Job" "Vacancy"])
-end; # hide
-
-function plot_full_df(results::AlgebraicABMs.ABMs.Traj)
-	plot_full_df(full_df(results))
-end; # hide
+function plot_full_df(results::AlgebraicABMs.ABMs.Traj)										# hide
+	plot_full_df(full_df(results))																					# hide
+end; 																																			# hide
 
 # If we run the same ABM on an initial state which has Firms in it, they just sit there, untouched by
 # either of the ABM rules.
@@ -231,7 +233,7 @@ people_and_firms_abm = ABM(
 			ABMRule(:FirmEntry, firm_entry, ContinuousHazard(1/10)),
 			ABMRule(:FirmExit, firm_exit, ContinuousHazard(1)),
 			ABMRule(:PostVacancy, post_vacancy, ContinuousHazard(1)),
-			ABMRule(:WithdrawVacancy, withdraw_vacancy, ContinuousHazard(10))
+			ABMRule(:WithdrawVacancy, withdraw_vacancy, ContinuousHazard(1))
 		]
 	]
 );
@@ -315,6 +317,7 @@ full_abm = ABM([
   [ABMRule(:Hire, hire, dependent_match_function)]
 ]);
 
+# ## Running the Model
 # We can then construct an acset to reflect our starting state, and run a simulation for 
 # a fixed amount of simulation time (as we do in this case) or until a fixed number of 
 # events have happened.  NB - pending an update to the Single Pushout rewriting capability 
@@ -344,13 +347,13 @@ result = run!(
 plot_full_df(result) # hide
 
 # 
-function plot_beveridge_curve(results::AlgebraicABMs.ABMs.Traj)
-	states = sequence_of_states(results)
-  Plots.plot(
-    [number_unemployed(s)/nparts(s, :Person) for s in states],
-    [market_tightness(s) for s in states],
-    xlabel = "U rate", ylabel = "V/U"
-  )
-end # hide
+function plot_beveridge_curve(results::AlgebraicABMs.ABMs.Traj) # hide
+	states = sequence_of_states(results)                          # hide
+  Plots.plot(                                                   # hide
+    [number_unemployed(s)/nparts(s, :Person) for s in states],  # hide
+    [market_tightness(s) for s in states],                      # hide
+    xlabel = "U rate", ylabel = "V/U"														# hide
+  )																														  # hide	
+end 																														# hide
 
 plot_beveridge_curve(result) # hide

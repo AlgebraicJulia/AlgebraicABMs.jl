@@ -4,7 +4,7 @@
 # First, we load the necessary libraries from AlgebraicJulia and elsewhere.
 
 using AlgebraicABMs, Catlab, AlgebraicRewriting, Random, Test, Plots, DataFrames, DataMigrations
-using Catlab: to_graphviz
+using Catlab: to_graphviz # hide
 import Distributions: Exponential, LogNormal
 using Pipe: @pipe
 
@@ -157,12 +157,14 @@ firm_entry = Rule{:DPO}(
   homomorphism(O, F)
 );
 
-rewrite(firm_entry, O) |> elements |> to_graphviz
+@assert rewrite(firm_entry, O) == F
 
 firm_exit = Rule{:SPO}(
 	homomorphism(O, F),
 	id(O)
 );
+
+@assert rewrite(firm_exit, F) == O
  
 # To make an ABM, we wrap a rule in a named container with a probability distribution over
 # how long it takes to "fire".  A model is created from a list of these wrapped rules.  To
@@ -177,21 +179,13 @@ people_only_abm = ABM([birth_abm_rule, death_abm_rule]);
 # We'll need an initial state to run our ABM, in this case simply a number of people.
 # We can form this using either of the interfaces for producing instances of our schema.
 
-# start_acset = O
-# for _ in 1:100
-#  start_acset = start_acset ⊕ P
-# end
-
-# imperatively_assembled_start = @acset FirmDemographyAge begin end;
-# for _ in 1:100
-# 	add_part!(imperatively_assembled_start, :Person)
-# end;
-
-# @test start_acset == imperatively_assembled_start
+initial_state = @acset FirmDemographyAge begin
+	Person = 10
+end;
 
 # We now have everything we need to run an ABM.
 
-# results = run!(people_only_abm, start; maxtime=100) 
+results = run!(people_only_abm, initial_state; maxtime=10)
 
 # Most of us will be a little more comfortable handling the resulting ABM trajectory 
 # in the form of a dataframe.
@@ -219,7 +213,11 @@ function plot_full_df(df::DataFrame)
   Plots.plot(df.time, [df.Person, df.Firm, df.Job, df.Vacancy]; labels=["Person" "Firm" "Job" "Vacancy"])
 end;
 
-# full_df(results)
+function plot_full_df(results::AlgebraicABMs.ABMs.Traj)
+	plot_full_df(full_df(results))
+end;
+
+plot_full_df(results)
 
 # If we run the same ABM on an initial state which has Firms in it, they just sit there, untouched by
 # either of the ABM rules.
@@ -277,7 +275,6 @@ constant_job_dynamics_abm = ABM(
   ]
 );
 
-
 # In particular, we care about how many people don't have jobs.
 function number_unemployed(state_of_world::FirmDemographyAge)
 	length([
@@ -285,7 +282,6 @@ function number_unemployed(state_of_world::FirmDemographyAge)
 		if length(incident(state_of_world, p, :employee)) == 0
 	])
 end;
-
 
 # Following the literature, we measure the interplay of supply and demand
 # in the labour market using this "market tightness" ratio.
@@ -314,12 +310,9 @@ dependent_match_function = (
   end
 ) |> ClosureState; 
 
-δ_u = 10*0.01600000001;
-δ_v = 10*0.01200000001;
-
 full_abm = ABM([
 	[r for r in constant_job_dynamics_abm.rules if r.name != :Hire];
   [ABMRule(:Hire, hire, dependent_match_function)]
-])
+]);
 
 

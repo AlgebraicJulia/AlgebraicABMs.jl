@@ -37,14 +37,12 @@ to_graphviz(SchLaborMarket) # hide
 # Having defined the schema, we will build our model(s) by constructing particular 
 # instances of this schema, and the transformations between them.  This can be done
 # by figuring out how our desired instance would be constructed in memory, and adding
-# the parts "by hand" using the imperative interface provided in [...].  It's more
-# convenient to start taking the "categorical" perspective, here, and use a notion of 
-# element based on the transformations between instances, rather than the implementation 
-# "under the hood".  We can specify some basic elements of our instances by taking the
-# freely constucted minimal example of each of our entities 
-# ("objects" - but not in the sense of Object-Oriented Programming).  This creates a "generic"
-# instance of the chosen entity, which in particular doesn't force any two objects to be the
-# same when they don't have to be.
+# the parts "by hand" using the imperative interface provided by `add_part` and related 
+# functions.  As an alternative, we can specify some basic elements of our instances by 
+# taking the freely constucted minimal example of each of our entities ("objects" - but 
+# not in the sense of Object-Oriented Programming).  This creates a "generic" instance 
+# of the chosen entity, which in particular doesn't force any two objects to be the same 
+# when they don't have to be.
 #  
 # The "representable" Person and Firm are what we would expect - single instances of
 # the relevant entity, and nothing else. 

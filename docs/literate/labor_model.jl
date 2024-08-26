@@ -30,8 +30,7 @@ end;
 to_graphviz(SchLaborMarket) # hide
 
 
-# We then create a Julia Type `LaborMarket` for instances of this schema.  Re-running this line of code in the same REPL
-# session after making any changes to the definition of the schema will throw an error.
+# We then create a Julia Type `LaborMarket` for instances of this schema.
 @acset_type LaborMarket(SchLaborMarket);
 
 # ## Constructing Instances
@@ -77,9 +76,8 @@ generic_person_sidebyside_generic_firm |> elements |> to_graphviz #hide
 one_of_each_generic_thing = P⊕F⊕V⊕J
 one_of_each_generic_thing |> elements |> to_graphviz #hide
 
-# The coproduct has a "unit", defined here using the imperative syntax, consisting of
-# the "empty" instance of that schema.  We follow convention by denoting it with the
-# letter O, and define it using the imperative syntax.
+# The coproduct has a "unit" consisting of the "empty" instance of that schema.  
+# We follow convention by denoting it with the letter O.
 
 O = LaborMarket();
 O |> elements |> to_graphviz # hide

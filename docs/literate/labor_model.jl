@@ -289,11 +289,8 @@ constant_job_dynamics_abm = ABM(
 );
 
 # In particular, we care about how many people don't have jobs.
-function number_unemployed(state_of_world::LaborMarket)
-	length([
-		p for p in state_of_world.parts.Person
-		if length(incident(state_of_world, p, :employee)) == 0
-	])
+function number_unemployed(LM::LaborMarket)
+	nparts(LM,:Person) - nparts(LM,:Job)
 end;
 
 # Following the literature, we measure the interplay of supply and demand

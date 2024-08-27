@@ -297,7 +297,7 @@ end;
 # in the labour market using this "market tightness" ratio.
 
 function market_tightness(state_of_world::LaborMarket)
-  length(state_of_world.parts.Vacancy)/number_unemployed(state_of_world)
+  nparts(state_of_world, :Vacancy)/number_unemployed(state_of_world)
 end;
 
 # This may come in handy for defining distributions

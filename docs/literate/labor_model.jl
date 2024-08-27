@@ -111,24 +111,30 @@ employer_also_hiring |> elements |> to_graphviz # hide
 # pattern that should exist going forward ("After") and I is the pattern of items in the
 # input match which should carry over into the output match.
 #
-# The rewrite rule is specified using a pair of ACSet transformations (I $\rightarrowtail$ L and I → R)
-# of ACSets sharing the same schema, where both transformations have the same ACSet as their
-# domain.  While the ACSet Transformations can be built using the machinery available in [...],
-# we will find in many cases that the transformations (also known as homomorphisms) between
+# The arrows in this pattern represent "ACSet transformations", which are structure-preserving
+# morphisms between ACSets. The rewrite rule is specified using a pair of ACSet transformations
+# (I $\rightarrowtail$ L and I → R) of ACSets sharing the same schema, where both transformations 
+# have the same ACSet as their domain.  While the ACSet Transformations can be built using the 
+# machinery available in [Catlab.jl](https://github.com/AlgebraicJulia/Catlab.jl), we will find in
+# many cases that the transformations (also known as homomorphisms) between
 # two relatively simple instances will be unique, so we only need to specify the domain
 # and codomain ACSets and rely on homomorphism search to find the mapping we intend.  In 
 # the case where the domain and codomain are the same, such as where the input pattern
 # persists in its entirety, we can specify the "transformation" mapping everything to
-# itself using id().
+# itself using id().  If the left homomorphism is id(), then we won't delete any part
+# of the pattern, if the right homomorphism is id(), then we won't add anything that wasn't
+# there before.
 
 # One of the events that can occur in our model is that any firm which exists can post
-# a vacancy.  The input pattern is the representable firm, the firm persists, and in 
-# the output pattern, it has become part of a connected vacancy-firm pair.
+# a vacancy.  The input pattern is the representable firm (L = F), the firm persists (I = F),
+# and in the output pattern, it has become part of a connected vacancy-firm pair (R = V).
 
 post_vacancy = Rule{:DPO}(
 	id(F),
 	homomorphism(F, V)
 );
+
+# Swapping the pattern has the effect of running the rule in reverse.
 
 withdraw_vacancy = Rule{:DPO}(
 	homomorphism(F, V),
@@ -143,7 +149,9 @@ birth = Rule{:DPO}(
 );
 
 # ... and unto nothing they shall return.  This rule uses Single Pushout rewriting,
-# because we want to eliminate any jobs which point to the now-defunct person.
+# which uses "cascading deletes" to eliminate entities which are mapped by functions
+# to an entity which gets deleted.  We use SPO for this reule because we want to 
+# eliminate any jobs which point to the now-defunct person.
 death = Rule{:SPO}(
 	homomorphism(O, P),
 	id(O)
@@ -156,7 +164,13 @@ firm_entry = Rule{:DPO}(
   homomorphism(O, F)
 );
 
+# If we apply the firm entry rule to an empty world-state, the result is a world that has
+# exactly one firm and nothing else.
+
 @assert rewrite(firm_entry, O) == F
+
+# And likewise, in a world state with a single firm, if that firm exits we are left with
+# the empty world state.
 
 firm_exit = Rule{:SPO}(
 	homomorphism(O, F),
@@ -222,7 +236,7 @@ end; 																																			# hide
 
 
 # To give the firms their own dynamics, we include two more ABM rules, using the firm entry and exit
-# patterns defined above.  We can do the same to generate a steady state of vacancies.
+# patterns defined above.  We then add two more rules to generate a steady state of vacancies.
 
 people_and_firms_abm = ABM(
 	[people_only_abm.rules; [
@@ -240,11 +254,12 @@ people_and_firms_abm = ABM(
 # and firm staying the same, and the vacancy disappearing.  But we don't want to keep 
 # adding jobs to the same person indefinitely - in this case, we'll abstract from reality a little,
 # and pretend that people can have at most one job.  We enforce this using an "application condition"
-# attached to our rule.  This is formed by specifying a further homomorphism from R to another pattern,
-# and specifying whether that further match is required or forbidden (false).  In this case, we
-# want to rule out situations where the Person and Firm-Vacancy pair are part of a larger pattern 
-# consisting of a Job-Person-Firm triple and a Firm-Vacancy pair - i.e. situations where the person we
-# are matching already has a job.
+# attached to our rule.  This is formed by specifying a further homomorphism from L to another pattern,
+# and specifying whether that further match is required or forbidden (false).  One could say it puts the 
+# pattern in a larger context, and the boolean flag says whether this larger context is either mandatory 
+# or forbidden.  In this case, we want to rule out situations where the Person and Firm-Vacancy pair are 
+# part of a larger pattern consisting of a Job-Person-Firm triple and a Firm-Vacancy pair - i.e. situations
+# in which the person we are matching already has a job.
 
 hire = Rule{:DPO}(
 	homomorphism(P⊕F, P⊕V),

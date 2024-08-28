@@ -12,6 +12,19 @@ using Pipe: @pipe
 ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # hide
 Random.seed!(123); # hide
 
+# ## Background
+# Inspired by the search-and-matching ABM implementation in [del Rio-Chanona et. al. (2022)](https://royalsocietypublishing.org/doi/suppl/10.1098/rsif.2020.0898), 
+# we demonstrate a very basic ABM of a [labor market seach-and-matching model](https://en.wikipedia.org/wiki/Search_and_matching_theory_(economics)).  
+# A state-of-the-world in our model will be represented by an ACSet on a schema that we define, and the model itself
+# will consist of a set of rewrite rules for ACSets on that schema, each paired with a probability distribution over the
+# waiting time before that rewrite "fires" on each of the matches it "recognizes" in the current state of the world.
+# Running the model generates a trajectory of ACSets and times of state transitions.
+#
+# Since the ACSet rewrite rules are defined using ACSet instances and the homomorphisms (or ACSet Transformations) between
+# them, it will be useful to revise AlgebraicRewriting.jl functions for creating them.  In practice, the rules below
+# are defined using identitiy morphisms on coproducts of representables and homomorphism search for unique homomorphisms
+# between them. 
+# 
 # ## Schema
 # We define our Schema "from scratch" by specifying the types of objects in our model and the mappings 
 # (or "homomorphisms") between them.  

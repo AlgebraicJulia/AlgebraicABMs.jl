@@ -288,7 +288,7 @@ function Base.push!(abm::ABM, r::ABMRule; overwrite=false)
   abm
 end
 
-Base.copy(abm::ABM) = abm.rules |> ABM # shallow - rules have same pointers
+Base.copy(abm::ABM) = abm.rules |> copy |> ABM # shallow - rules have same pointers
 Base.length(abm::ABM) = length(abm.rules)
 
 """A collection of timers associated at runtime w/ an ABMRule"""

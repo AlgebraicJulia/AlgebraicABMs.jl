@@ -238,15 +238,12 @@ end; 																																			# hide
 # To give the firms their own dynamics, we include two more ABM rules, using the firm entry and exit
 # patterns defined above.  We then add two more rules to generate a steady state of vacancies.
 
-people_and_firms_abm = ABM(
-	[people_only_abm.rules; [
-			ABMRule(:FirmEntry, firm_entry, ContinuousHazard(1/10)),
-			ABMRule(:FirmExit, firm_exit, ContinuousHazard(1)),
-			ABMRule(:PostVacancy, post_vacancy, ContinuousHazard(1)),
-			ABMRule(:WithdrawVacancy, withdraw_vacancy, ContinuousHazard(1))
-		]
-	]
-);
+people_and_firms_abm = @pipe people_only_abm |>
+  copy(_) |>
+  push!(_, ABMRule(:FirmEntry, firm_entry, ContinuousHazard(1/10))) |>
+  push!(_, ABMRule(:FirmExit, firm_exit, ContinuousHazard(1))) |>
+  push!(_, ABMRule(:PostVacancy, post_vacancy, ContinuousHazard(1))) |>
+  push!(_, ABMRule(:WithdrawVacancy, withdraw_vacancy, ContinuousHazard(1)));
 
 
 # Hiring, however, presents a new challenge.  We want to convert a
@@ -278,15 +275,10 @@ fire = Rule{:DPO}(
 );
 
 # We assume at first that hiring and firing occur at constant rates.
-constant_job_dynamics_abm = ABM(
-  [
-    people_and_firms_abm.rules;
-    [
-      ABMRule(:Hire, hire, ContinuousHazard(1)),
-      ABMRule(:Fire, fire, ContinuousHazard(1))
-    ]
-  ]
-);
+constant_job_dynamics_abm = @pipe people_and_firms_abm |>
+  copy(_) |>
+  push!(_, ABMRule(:Hire, hire, ContinuousHazard(1))) |>
+  push!(_, ABMRule(:Fire, fire, ContinuousHazard(1)))
 
 # In particular, we care about how many people don't have jobs.
 function number_unemployed(LM::LaborMarket)
@@ -297,7 +289,7 @@ end;
 # in the labour market using this "market tightness" ratio.
 
 function market_tightness(state_of_world::LaborMarket)
-  nparts(state_of_world, :Vacancy)/number_unemployed(state_of_world)
+  length(state_of_world.parts.Vacancy)/number_unemployed(state_of_world)
 end;
 
 # This may come in handy for defining distributions
@@ -320,10 +312,10 @@ dependent_match_function = (
   end
 ) |> ClosureState; 
 
-full_abm = ABM([
-	[r for r in constant_job_dynamics_abm.rules if r.name != :Hire];
-  [ABMRule(:Hire, hire, dependent_match_function)]
-]);
+full_abm = @pipe constant_job_dynamics_abm |>
+  copy(_) |>
+  filter(r -> r.name != :Hire, _) |> # Get rid of old hire rule
+  push!(_, ABMRule(:Hire, hire, dependent_match_function)) # add new one
 
 # ## Running the Model
 # We can then construct an acset to reflect our starting state, and run a simulation for 
@@ -331,12 +323,9 @@ full_abm = ABM([
 # events have happened.  NB - pending an update to the Single Pushout rewriting capability 
 # ofAlgebraicABMs, we have temporarily deactivated the firm and person birth and death rules. 
 
-partial_abm = ABM(
-	filter( 
-		r -> !(r.name in [:Birth, :Death, :FirmEntry, :FirmExit]),
-		full_abm.rules
-	)
-);
+partial_abm = filter(full_abm) do r 
+	!(r.name in [:Birth, :Death, :FirmEntry, :FirmExit])
+end;
 
 initial_state = @acset LaborMarket begin
 	Person = 20

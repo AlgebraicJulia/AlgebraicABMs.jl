@@ -2,7 +2,7 @@
 module ABMs
 
 export ABM, ABMRule, run!, DiscreteHazard, ContinuousHazard, FullClosure, 
-       ClosureState, ClosureTime, RawODE, ABMFlow
+       ClosureState, ClosureTime, RawODE, ABMFlow, filter, push!, copy, length
 
 using Distributions, CompetingClocks, Random
 using DataStructures: DefaultDict
@@ -274,6 +274,22 @@ additions(abm::ABM) = right.(abm.rules)
 
 Base.getindex(abm::ABM, i::Int) = abm.rules[i]
 Base.getindex(abm::ABM, n::Symbol) = abm.rules[abm.names[n]]
+
+Base.filter(f, abm::ABM) = filter(f, abm.rules) |> ABM
+
+function Base.push!(abm::ABM, r::ABMRule; overwrite=false)
+  if haskey(abm.names, r.name)
+    overwrite || error("The ABM already has a rule with this name, set overwrite=true to replace")
+    abm.rules[abm.names[r.name]] = r
+  else
+    push!(abm.rules, r)
+    abm.names[r.name] = length(abm.rules)
+  end
+  abm
+end
+
+Base.copy(abm::ABM) = abm.rules |> ABM # shallow - rules have same pointers
+Base.length(abm::ABM) = length(abm.rules)
 
 """A collection of timers associated at runtime w/ an ABMRule"""
 abstract type AbsHomSet end

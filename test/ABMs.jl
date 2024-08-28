@@ -42,6 +42,19 @@ to_graphviz(G)
 # Assemble rules into ABM
 abm = ABM([create_loop, add_loop, rem_loop, rem_edge])
 
+# Test a few collection methods for ABMs
+@test length(abm) == 4
+abm = filter(r -> r.name != :RemEdge, abm)
+@test length(abm) == 3
+push!(abm, rem_edge)
+@test length(abm) == 4
+
+new_abm = copy(abm)
+@test !(new_abm === abm)
+for i in eachindex(abm.rules)
+  @test abm.rules[i] == new_abm.rules[i]
+end
+
 # 2 loops, so 2 cached homs for the only rule with an explicit hom set
 @test length(only(match_vect(RuntimeABM(abm, G)[:RemLoop].val))) == 2
 

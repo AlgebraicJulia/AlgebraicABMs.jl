@@ -55,6 +55,18 @@ for i in eachindex(abm.rules)
   @test abm.rules[i] == new_abm.rules[i]
 end
 
+do_nothing = ABMRule(
+  :DoNothing,
+  Rule{:DPO}(
+    id(representable(Graph, :V)),
+    id(representable(Graph, :V))
+  ),
+  ContinuousHazard(1)
+)
+push!(new_abm, do_nothing)
+@test length(new_abm) == length(abm) + 1
+
+
 # 2 loops, so 2 cached homs for the only rule with an explicit hom set
 @test length(only(match_vect(RuntimeABM(abm, G)[:RemLoop].val))) == 2
 

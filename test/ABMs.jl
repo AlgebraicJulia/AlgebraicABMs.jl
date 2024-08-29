@@ -66,6 +66,7 @@ do_nothing = ABMRule(
 push!(new_abm, do_nothing)
 @test length(new_abm) == length(abm) + 1
 
+@test_throws ErrorException push!(new_abm, rem_loop)
 
 # 2 loops, so 2 cached homs for the only rule with an explicit hom set
 @test length(only(match_vect(RuntimeABM(abm, G)[:RemLoop].val))) == 2

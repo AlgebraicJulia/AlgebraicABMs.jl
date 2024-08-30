@@ -1,7 +1,9 @@
 module Visualization
 
+export graphviz_write
+
 import AlgebraicRewriting: view_traj 
-using Catlab: codom, right
+using Catlab: codom, right, to_graphviz
 
 using ..ABMs
 using ..ABMs: Traj
@@ -28,5 +30,13 @@ function Base.view(t::Traj, viewer; dirname="default")
     G
   end
 end 
+
+function graphviz_write(x, dirname="default")
+  G = to_graphviz(x)
+  open(dirname, "w") do io
+    show(io, "image/svg+xml", G)
+  end
+  G
+end
 
 end # module

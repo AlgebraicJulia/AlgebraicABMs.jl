@@ -2,7 +2,7 @@
 module ABMs
 
 export ABM, ABMRule, run!, DiscreteHazard, ContinuousHazard, FullClosure, 
-       ClosureState, ClosureTime, RawODE, ABMFlow
+       ClosureState, ClosureTime, RawODE, ABMFlow, filter, push!, copy, length
 
 using Distributions, CompetingClocks, Random
 using DataStructures: DefaultDict
@@ -12,11 +12,12 @@ using StructEquality
 using Catlab, AlgebraicRewriting
 using AlgebraicRewriting.Incremental.Algorithms: connected_acset_components, pull_back
 using AlgebraicRewriting.Rewrite.Migration: repr_dict
+using Catlab.CategoricalAlgebra.Chase: extend_morphism_constraints
 using AlgebraicRewriting.Rewrite.Utils: get_pmap, get_rmap, get_expr_binding_map
-import Catlab: right
+import Catlab: left, right
 import AlgebraicRewriting: get_match, ruletype, addition!, deletion!, get_matches
 
-import ..Upstream: pattern, pops!
+import ..Upstream: pattern, pops!, IncHomSet_basis
 
 # Timers
 ########
@@ -199,14 +200,19 @@ const Maybe{T} = Union{Nothing, T}
 
 """
 A stochastic rewrite rule with a dependent hazard rate
+
+A basis is a subobject of the pattern of the rule for which we want a timer 
+per match. By default, the basis ↣ pattern map is just id(pattern).
+
 """
 @struct_hash_equal struct ABMRule
   rule::Rule
-  timer::AbsTimer 
+  timer::AbsTimer
+  basis::Maybe{ACSetTransformation}
   name::Maybe{Symbol}
   pattern_type::PatternType
-  ABMRule(r::Rule, t::AbsTimer; name=nothing) = 
-    new(r, t, name, pattern_type(r, is_exp(t)))
+  ABMRule(r::Rule, t::AbsTimer; basis=nothing, name=nothing) = 
+    new(r, t, basis, name, pattern_type(r, is_exp(t)))
 end
 
 # Give name as first arg rather than as kwarg
@@ -221,15 +227,20 @@ pattern_type(r::ABMRule) = r.pattern_type
 
 pattern(r::ABMRule) = pattern(getrule(r))
 
+left(r::ABMRule) = left(getrule(r))
 right(r::ABMRule) = right(getrule(r))
 
 ruletype(r::ABMRule) = ruletype(getrule(r))
+
+basis(r::ABMRule) = r.basis
+
+basis_pattern(r::ABMRule) = isnothing(r.basis) ? codom(left(r)) : dom(basis(r))
 
 get_matches(r::ABMRule, args...; kw...) = 
   get_matches(getrule(r), args...; kw...)
 
 (F::Migrate)(r::ABMRule) = 
-  ABMRule(F(r.rule), r.timer; name=r.name)
+  ABMRule(F(r.rule), r.timer; basis=F(r.basis), name=r.name)
 
 """
 A type which implements AbsDynamics must be able to compiled to an ODE for some 
@@ -252,8 +263,8 @@ end
 end 
 
 # Accessing an IncHomSet
-const KeyType = Union{Pair{Int, Int}}       # connected comp. homset
-                      Vector{Pair{Int,Int}} # multi-component homset
+const KeyType = Union{Pair{Int, Int},        # connected comp. homset
+                      Vector{Pair{Int,Int}}} # multi-component homset
 
 """
 An agent-based model.
@@ -274,6 +285,22 @@ additions(abm::ABM) = right.(abm.rules)
 
 Base.getindex(abm::ABM, i::Int) = abm.rules[i]
 Base.getindex(abm::ABM, n::Symbol) = abm.rules[abm.names[n]]
+
+Base.filter(f, abm::ABM) = filter(f, abm.rules) |> ABM
+
+function Base.push!(abm::ABM, r::ABMRule; overwrite=false)
+  if haskey(abm.names, r.name)
+    overwrite || error("The ABM already has a rule with this name, set overwrite=true to replace")
+    abm.rules[abm.names[r.name]] = r
+  else
+    push!(abm.rules, r)
+    abm.names[r.name] = length(abm.rules)
+  end
+  abm
+end
+
+Base.copy(abm::ABM) = abm.rules |> copy |> ABM # shallow - rules have same pointers
+Base.length(abm::ABM) = length(abm.rules)
 
 """A collection of timers associated at runtime w/ an ABMRule"""
 abstract type AbsHomSet end
@@ -306,7 +333,8 @@ function init_homset(rule::ABMRule, state::ACSet,
   p, sd = pattern_type(rule), state_dep(rule.timer)
   p == EmptyP() && return EmptyHomSet()
   (sd || p == RegularP()  
-   ) && return ExplicitHomSet(IncHomSet(getrule(rule), state,  additions))
+   ) && return ExplicitHomSet(IncHomSet_basis(getrule(rule), state,  additions; 
+                                        basis=basis_pattern(rule)))
   @assert p isa RepresentableP  "$(typeof(p))"
   return RepresentableHomSet()
 end 
@@ -318,7 +346,7 @@ const default_sampler = FirstToFire{
   Float64}
 
 """
-Data @struct_hash_equal structure for maintaining simulation information while running an ABM
+Data structure for maintaining simulation information while running an ABM
 """
 mutable struct RuntimeABM
   state::ACSet
@@ -395,6 +423,14 @@ function pops!(rt::RuntimeABM)::Vector{Pair{Int, Maybe{KeyType}}}
 end
 
 
+function get_match(pat::PatternType, L::ACSet, G::ACSet, timer::AbsHomSet, key; 
+                   basis::Maybe{ACSetTransformation}) 
+  isnothing(basis) && return get_match(pat, L, G, timer, key)
+  m = get_match(pat, dom(basis), G, timer, key)
+  initial = extend_morphism_constraints(m, basis)
+  rand(homomorphisms(L, G; initial))
+end
+
 """
 Get match returns a randomly chosen morphism for the aggregate rule
 """
@@ -458,7 +494,7 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
     push!(output, (rt.tnow, rule, getname(rule), save(rt.state), sp))
   disable!′(key::Pair) = disable!(rt.sampler, key, rt.tnow)
   disable!′(i::Int) = disable!′(i => nothing)
-  function enable!′(m::ACSetTransformation, rule_id::Int, key=nothing) 
+  function enable!′(m::ACSetTransformation, rule_id::Int, key::Maybe{KeyType}=nothing) 
     rule = abm.rules[rule_id]
     haz = get_hazard(pattern_type(rule), m, rt.tnow, rule.timer)
     enable!(rt.sampler, rule_id => key, haz, rt.tnow, rt.tnow, rt.rng)
@@ -494,7 +530,8 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
         rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
         rule′::Rule, rule_type::Symbol = getrule(rule), ruletype(rule)
         # If RegularPattern, we have an explicit match, otherwise randomly pick one
-        m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key)
+        m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key; 
+                      basis=basis(rule))
         # bring the match 'up to speed' given the previous (simultanous) updates
         for (l, r) in first.(update_data)
           m = pull_back(l, m) ⋅ r

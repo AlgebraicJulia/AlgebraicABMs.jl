@@ -42,6 +42,32 @@ to_graphviz(G)
 # Assemble rules into ABM
 abm = ABM([create_loop, add_loop, rem_loop, rem_edge])
 
+# Test a few collection methods for ABMs
+@test length(abm) == 4
+abm = filter(r -> r.name != :RemEdge, abm)
+@test length(abm) == 3
+push!(abm, rem_edge)
+@test length(abm) == 4
+
+new_abm = copy(abm)
+@test !(new_abm === abm)
+for i in eachindex(abm.rules)
+  @test abm.rules[i] == new_abm.rules[i]
+end
+
+do_nothing = ABMRule(
+  :DoNothing,
+  Rule{:DPO}(
+    id(representable(Graph, :V)),
+    id(representable(Graph, :V))
+  ),
+  ContinuousHazard(1)
+)
+push!(new_abm, do_nothing)
+@test length(new_abm) == length(abm) + 1
+
+@test_throws ErrorException push!(new_abm, rem_loop)
+
 # 2 loops, so 2 cached homs for the only rule with an explicit hom set
 @test length(only(match_vect(RuntimeABM(abm, G)[:RemLoop].val))) == 2
 
@@ -62,8 +88,28 @@ create_vert = ABMRule(Rule(id(Graph()),  create(Graph(1))), DiscreteHazard(1.));
 abm = ABM([create_loop, create_vert]);
 traj = run!(abm, Graph(); maxtime=5);
 
-# ODEs
-######
+
+# Basis
+#######
+using AlgebraicABMs, Catlab, AlgebraicRewriting
+
+# Rule which fires once per vertex (it tries to add an edge to an 
+# arbitrary other vertex) - rate is based on vertex pattern, not pattern for 
+# the rule itself, which has two 
+add_edge = ABMRule(Rule(id(Graph(2)), 
+                        homomorphism(Graph(2), path_graph(Graph, 2); 
+                                     any=true, monic=true)),
+                   DiscreteHazard(1.),
+                   basis=homomorphism(Graph(1), Graph(2); any=true))
+abm = ABM([add_edge])
+rt = RuntimeABM(abm, Graph(3))
+traj = run!(abm, Graph(3); maxtime=3);
+
+view(traj, graphviz_write)
+
+
+# ODEs (IN PROGRESS)
+#####################
 using AlgebraicABMs, AlgebraicRewriting, Catlab
 
 # State of world: a set of free-floating Float64s 

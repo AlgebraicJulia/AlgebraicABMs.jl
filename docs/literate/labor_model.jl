@@ -256,7 +256,7 @@ people_and_firms_abm = @pipe people_only_abm |>
   copy(_) |>
   push!(_, ABMRule(:FirmEntry, firm_entry, ContinuousHazard(1/10))) |>
   push!(_, ABMRule(:FirmExit, firm_exit, ContinuousHazard(1))) |>
-  push!(_, ABMRule(:PostVacancy, post_vacancy, ContinuousHazard(1))) |>
+  push!(_, ABMRule(:PostVacancy, post_vacancy, ContinuousHazard(1/10))) |>
   push!(_, ABMRule(:WithdrawVacancy, withdraw_vacancy, ContinuousHazard(1)));
 
 
@@ -334,32 +334,27 @@ full_abm = @pipe constant_job_dynamics_abm |>
 # ## Running the Model
 # We can then construct an acset to reflect our starting state, and run a simulation for 
 # a fixed amount of simulation time (as we do in this case) or until a fixed number of 
-# events have happened.  NB - pending an update to the Single Pushout rewriting capability 
-# ofAlgebraicABMs, we have temporarily deactivated the firm and person birth and death rules. 
-
-partial_abm = filter(full_abm) do r 
-	!(r.name in [:Birth, :Death, :FirmEntry, :FirmExit])
-end;
+# events have happened.  
 
 initial_state = @acset LaborMarket begin
-	Person = 20
-	Firm = 6
+	Person = 50
+	Firm = 10
 end;
 
 initial_state |> elements |> to_graphviz # hide
-
 # 
 result = run!(
-  partial_abm,
+  full_abm,
   initial_state,
-  maxtime = 100
+  maxtime = 20
 );
+
 
 plot_full_df(result) # hide
 
 # 
 function plot_beveridge_curve(results::AlgebraicABMs.ABMs.Traj) # hide
-	states = sequence_of_states(results)                          # hide
+	states = sequence_of_states(results)[100:length(results)]      # hide
   Plots.plot(                                                   # hide
     [number_unemployed(s)/nparts(s, :Person) for s in states],  # hide
     [market_tightness(s) for s in states],                      # hide

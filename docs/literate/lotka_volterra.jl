@@ -219,11 +219,14 @@ migration, we can define them in terms of sheep and then migrate along `F` to
 obtain the analogous actions for wolves.
 =#
 
-F = Migrate(
-  Dict(:Sheep => :Wolf, :Wolf => :Sheep),
-  Dict([:sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
+F = ΔMigration(FinFunctor(
+  Dict(:Sheep => :Wolf, :Wolf => :Sheep, :Direction => :Direction, :Eng=>:Eng, 
+       :Time=>:Time, :V=>:V, :E=>:E),
+  Dict(:sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
     :sheep_eng => :wolf_eng, :wolf_eng => :sheep_eng, :countdown => :countdown,
-    :sheep_dir => :wolf_dir, :wolf_dir => :sheep_dir,]), SchLV, LV);
+    :sheep_dir => :wolf_dir, :wolf_dir => :sheep_dir, 
+    :src=>:src,:tgt=>:tgt,:inv=>:inv,:dir=>:dir,:left=>:left,:right=>:right,
+    ), SchLV, SchLV), LV);
 
 #=
 We ought to be able to take a state of the world (with no coordinate information)
@@ -231,7 +234,7 @@ and obtain a state of the world with coordinates (the canonical way to do this
 is to assign "variables" for the values of the coordinates).
 =#
 
-Viz = Migrate(SchLV, LV, SchLV_Viz, LV_Viz; delta=false);
+Viz = ΣMigration(FinFunctor(SchLV, SchLV_Viz), LV_Viz);
 
 # # Representables
 #=

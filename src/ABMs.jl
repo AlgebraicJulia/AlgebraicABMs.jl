@@ -239,7 +239,7 @@ basis_pattern(r::ABMRule) = isnothing(r.basis) ? codom(left(r)) : dom(basis(r))
 get_matches(r::ABMRule, args...; kw...) = 
   get_matches(getrule(r), args...; kw...)
 
-(F::Migrate)(r::ABMRule) = 
+(F::SimpleMigration)(r::ABMRule) = 
   ABMRule(F(r.rule), r.timer; basis=F(r.basis), name=r.name)
 
 """
@@ -281,7 +281,7 @@ end
 
 additions(abm::ABM) = right.(abm.rules)
 
-(F::Migrate)(abm::ABM) = ABM(F.(abm.rules), abm.dyn)
+(F::SimpleMigration)(abm::ABM) = ABM(F.(abm.rules), abm.dyn)
 
 Base.getindex(abm::ABM, i::Int) = abm.rules[i]
 Base.getindex(abm::ABM, n::Symbol) = abm.rules[abm.names[n]]

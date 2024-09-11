@@ -174,7 +174,7 @@ If we call `AddCoords` on something built out of `LifeState` instances, it will
 make the corresponding thing built out of `LifeStateCoords` instances. 
 =#
 
-AddCoords = Migrate(SchLifeGraph, LifeState, SchLifeCoords, LifeStateCoords; delta=false);
+AddCoords = ΣMigration(FinFunctor(SchLifeGraph, SchLifeCoords), LifeStateCoords);
 
 # ## Initial state for the model 
 

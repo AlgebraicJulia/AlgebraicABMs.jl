@@ -164,7 +164,7 @@ birth = Rule{:DPO}(
 
 # ... and unto nothing they shall return.  This rule uses Single Pushout rewriting,
 # which uses "cascading deletes" to eliminate entities which are mapped by functions
-# to an entity which gets deleted.  We use SPO for this reule because we want to 
+# to an entity which gets deleted.  We use SPO for this rule because we want to 
 # eliminate any jobs which point to the now-defunct person.
 death = Rule{:SPO}(
 	homomorphism(O, P),

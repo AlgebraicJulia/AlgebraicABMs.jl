@@ -11,3 +11,7 @@ end
 @testset "PetriInterface" begin
   include("PetriInterface.jl")
 end
+
+@testset "StateChartsInterface" begin
+  include("TestStateChartsInterface")
+end

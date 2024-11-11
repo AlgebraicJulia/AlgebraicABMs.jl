@@ -2,7 +2,7 @@
 """
 module AlgebraicABMs
 
-export PetriNetCSet
+export PetriNetCSet, StateChartABMSchema_MultipleObjects, make_infectious_rule_MultipleObjects, radomlyAssignInitialInfectives, make_ABM
 
 using Reexport
 
@@ -18,5 +18,13 @@ include("Visualization.jl")
 
 # Methods to be implemented by extensions
 function PetriNetCSet end 
+
+# statecharts
+function StateChartABMSchema_MultipleObjects end
+function make_infectious_rule_MultipleObjects end
+function radomlyAssignInitialInfectives end
+function make_ABM end
+
+
 
 end # module

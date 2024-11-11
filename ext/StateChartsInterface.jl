@@ -134,7 +134,6 @@ end
 ## as a set of states. e.g., as =[:S,:H], which indicates this person is Susceptible and Healthy. ID attributes is a variable
 ## NOTE: if represent a single person, without any states, it can write as []. But this indicates a person with a variable attributes ID
 function representable_MultipleObjects(ss::AbstractUnitStateChart,as,obn::Symbol=:P)
-    println(as)
     rep = StateChartCset_MultipleObjects(ss,obn)
     as = vectorify(as)
 
@@ -160,10 +159,18 @@ function infectiousruleLIR_MultipleObjects(ss::AbstractUnitStateChart, l, i, r, 
     return [L,I,R]
 end
 
-function make_infectious_rule_MultipleObjects(ss::AbstractUnitStateChart, l, i, r, obn::Symbol=:P; use_DataMigration::Bool = false, acset=nothing, migration_rule=nothing)
+# RdoubleI = false,  indicates the R (right object) include one Infective person. E.g., the Susceptible transite to Exposed (E) if infected
+# RdoubleI = true,  indicates the R (right object) include two Infective persons. E.g., the Susceptible transite to Infective (I) if infected
+# the basic idea is whether 
+function make_infectious_rule_MultipleObjects(ss::AbstractUnitStateChart, l, i, r, obn::Symbol=:P; RdoubleI::Bool = true, use_DataMigration::Bool = false, acset=nothing, migration_rule=nothing)
     LIR = infectiousruleLIR_MultipleObjects(ss,l,i,r,obn)
     L,I,R = use_DataMigration ? [migrate(acset, lir, migration_rule) for lir in LIR] : LIR
-    return Rule(homomorphism(I,L;monic=[obn]),homomorphism(I,R;monic=[obn]))
+    if RdoubleI
+        rule = Rule(homomorphism(I,L;monic=[obn]),homomorphism(I,R;monic=[obn],initial=(I=[2],)))
+    else 
+        rule = Rule(homomorphism(I,L;monic=[obn]),homomorphism(I,R;monic=[obn]))
+    end
+    return rule
 end
 
 # generate the rewrite rule

@@ -27,7 +27,7 @@ to_graphviz(schema; prog="dot")
 ########### the states of state charts are attributes ################
 
 # define the new_infectious rule
-transition_rules = [ ContinuousHazard( 1.0 / β) => make_infectious_rule_MultipleObjects(pertussis, [[:S],[:I]],[:I],[[:E],[:I]])]
+transition_rules = [ ContinuousHazard( 1.0 / β) => make_infectious_rule_MultipleObjects(pertussis, [[:S],[:I]],[:I],[[:E],[:I]], RdoubleI = false)]
 
 # Initial state for schema of multiple object
 @acset_type PertussisNet(schema, index=[:src,:tgt]){Symbol}

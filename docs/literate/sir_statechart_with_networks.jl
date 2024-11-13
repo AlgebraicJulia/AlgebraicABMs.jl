@@ -21,8 +21,8 @@ ENV["JULIA_DEBUG"] = "AlgebraicABMs";  # turn on @debug messages for this packag
 
 # Step 1: define parameters
 # parameters of state transition
-total_population = 10 # Unit: persons
-frac_initial_infected = 0.1
+total_population = 50 # Unit: persons
+frac_initial_infected = 0.02
 contact_rate = 5 # Unit: contacts per day
 infectivity = 0.01
 average_illness_duration = 15 # days
@@ -101,13 +101,28 @@ network = smallworldNetWork(Int(total_population), average_connections, p_random
 init = radomlyAssignInitialInfectives(SIRModelStaticNet(), Int(total_population), Int(frac_initial_infected * total_population); obn=:V, network = network)
 
 # Step 7: run the ABM model
+ts = 50.0 # the total running time
 abm = make_ABM(SIRStatechart, transition_rules, :V; is_schema_singObject=false, use_DataMigration=true, acset = SIRModelStaticNet, migration_rule = migrate_rule)
-res = run!(abm, init; maxtime=50.0)
+res = run!(abm, init; maxtime=ts);
 
 # Step 8: Visualization of results
 # 8.1 plot out the time series of each state
 Makie.plot(res; Dict(o=>X->nparts(X,o) for o in states)...)
 # 8.2 show the networks at time t
-t = 5
-StateCharts.Graph(res,t,stateColors)
+t0 = 0 # initial state
+StateCharts.Graph(res,t0,stateColors)
 
+t10 = 10 # initial state
+StateCharts.Graph(res,t10,stateColors)
+
+t20 = 20
+StateCharts.Graph(res,t20,stateColors)
+
+t30 = 30
+StateCharts.Graph(res,t30,stateColors)
+
+t40 = 40
+StateCharts.Graph(res,t40,stateColors)
+
+t50 = Int(ts) # final state
+StateCharts.Graph(res,t50,stateColors)

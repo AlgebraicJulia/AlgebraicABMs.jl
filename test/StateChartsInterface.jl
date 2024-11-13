@@ -53,7 +53,7 @@ abm = make_ABM(pertussis, transition_rules; is_schema_singObject=false)
 @test nparts.(Ref(dom(Catlab.left(abm.rules[4].rule))), [:S,:E,:I,:R₄,:V₄,:P]) == [0,0,0,0,0,1] # p
 @test nparts.(Ref(codom(Catlab.right(abm.rules[4].rule))), [:S,:E,:I,:R₄,:V₄,:P]) == [0,0,0,0,1,1] # V4->p
 
-#res = run!(abm, init; maxtime=50.0)
+res = run!(abm, init; maxtime=10.0)
 #Makie.plot(res; Dict(o=>X->nparts(X,o) for o in [:S,:E,:I,:R₄,:V₄])...)
 
 end

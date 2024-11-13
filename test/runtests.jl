@@ -13,5 +13,5 @@ end
 end
 
 @testset "StateChartsInterface" begin
-  include("TestStateChartsInterface")
+  include("StateChartsInterface.jl")
 end

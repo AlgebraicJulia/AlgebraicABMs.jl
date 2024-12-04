@@ -15,20 +15,20 @@ Random.seed!(123); # hide
 # ## Background
 # Inspired by the search-and-matching ABM implementation in [del Rio-Chanona et. al. (2022)](https://royalsocietypublishing.org/doi/suppl/10.1098/rsif.2020.0898), 
 # we demonstrate a very basic ABM of a [labor market seach-and-matching model](https://en.wikipedia.org/wiki/Search_and_matching_theory_(economics)).  
-# A state-of-the-world in our model will be represented by an ACSet on a schema that we define, and the model itself
-# will consist of a set of rewrite rules for [ACSets](https://github.com/AlgebraicJulia/ACSets.jl) on that schema,
+# A "state of the world" in our model will be represented by an ACSet on a schema that we define, and the model itself
+# will consist of a set of [rewrite rules](https://blog.algebraicjulia.org/post/2022/09/ai-planning-cset/) for [ACSets](https://github.com/AlgebraicJulia/ACSets.jl) on that schema,
 # each paired with a probability distribution over the waiting time before that rewrite "fires" on each of the matches it "recognizes" in the current state of the world.
 # Running the model generates a trajectory of ACSets and times of state transitions.
 #
 # Since the ACSet rewrite rules are defined using ACSet instances and the homomorphisms (or ACSet Transformations) between
 # them, it will be useful to revise [Catlab.jl](https://github.com/AlgebraicJulia/Catlab.jl) and 
 # [AlgebraicRewriting.jl](https://github.com/AlgebraicJulia/AlgebraicRewriting.jl) functions for creating them.  
-# In practice, the rules below are defined using identitiy morphisms on coproducts of representables and homomorphism search for unique homomorphisms
-# between them. 
 # 
 # ## Schema
-# We define our Schema "from scratch" by specifying the types of objects in our model and the mappings 
-# (or "homomorphisms") between them.  
+# We define our Schema by specifying the types of entities in our model (tagged as "Ob" 
+# for Objects, but not in the sense of Object-Oriented Programming) and the types of 
+# arrows between them (tagged with "Hom" for Homomorphisms - although this word is used 
+# in a slightly different sense above and below). 
 
 @present SchLaborMarket(FreeSchema) begin
 	Person::Ob
@@ -44,19 +44,21 @@ end;
 to_graphviz(SchLaborMarket) # hide
 
 
-# We then create a Julia Type `LaborMarket` for instances of this schema.
+# We then create a Julia Type `LaborMarket` for instances of this schema.  Each instance
+# will be a "state of the world" which is compatible with the corresponding schema.
 @acset_type LaborMarket(SchLaborMarket);
 
 # ## Constructing Instances
 # Having defined the schema, we will build our model(s) by constructing particular 
-# instances of this schema, and the transformations between them.  This can be done
-# by figuring out how our desired instance would be constructed in memory, and adding
-# the parts "by hand" using the imperative interface provided by `add_part` and related 
-# functions.  As an alternative, we can specify some basic elements of our instances by 
-# taking the freely constucted minimal example of each of our entities ("objects" - but 
-# not in the sense of Object-Oriented Programming).  This creates a "generic" instance 
-# of the chosen entity, which in particular doesn't force any two objects to be the same 
-# when they don't have to be.
+# instances ("states of the world" in our model) which conform to this schema,
+# and the transformations between them.  This can be done by figuring out how our desired
+# instance would be constructed in memory, and adding the parts "by hand" using the 
+# imperative interface provided by `add_part` and related functions.  
+
+# As an alternative, we can specify some basic elements of our instances by 
+# taking the freely constucted minimal example of each of our entities ("objects").  
+# This creates a "generic" instance of the chosen entity, which in particular doesn't
+# force any two parts to be the same when they don't have to be.
 #  
 # The "representable" Person and Firm are what we would expect - single instances of
 # the relevant entity, and nothing else. 
@@ -135,9 +137,9 @@ employer_also_hiring |> elements |> to_graphviz # hide
 # and codomain ACSets and rely on homomorphism search to find the mapping we intend.  In 
 # the case where the domain and codomain are the same, such as where the input pattern
 # persists in its entirety, we can specify the "transformation" mapping everything to
-# itself using id().  If the left homomorphism is id(), then we won't delete any part
-# of the pattern, if the right homomorphism is id(), then we won't add anything that wasn't
-# there before.
+# itself using `id()`, the identity function.  If the left homomorphism is `id()`, 
+# then we won't delete any part of the pattern, if the right homomorphism is `id()`, 
+# then we won't add anything that wasn't there before.
 
 # One of the events that can occur in our model is that any firm which exists can post
 # a vacancy.  The input pattern is the representable firm (L = F), the firm persists (I = F),
@@ -245,9 +247,22 @@ function plot_full_df(results::AlgebraicABMs.ABMs.Traj)										# hide
 	plot_full_df(full_df(results))																					# hide
 end; 																																			# hide
 
+result = run!(
+  people_only_abm,
+  O,
+  maxtime = 30
+);
+plot_full_df(result)                                                      # hide
+
 # If we run the same ABM on an initial state which has Firms in it, they just sit there, untouched by
 # either of the ABM rules.
 
+result = run!(
+  people_only_abm,
+  F ⊕ F ⊕ F ⊕ F,
+  maxtime = 30
+);
+plot_full_df(result)                                                      # hide
 
 # To give the firms their own dynamics, we include two more ABM rules, using the firm entry and exit
 # patterns defined above.  We then add two more rules to generate a steady state of vacancies.
@@ -292,7 +307,7 @@ fire = Rule{:DPO}(
 constant_job_dynamics_abm = @pipe people_and_firms_abm |>
   copy(_) |>
   push!(_, ABMRule(:Hire, hire, ContinuousHazard(1))) |>
-  push!(_, ABMRule(:Fire, fire, ContinuousHazard(1)))
+  push!(_, ABMRule(:Fire, fire, ContinuousHazard(1)));
 
 # In particular, we care about how many people don't have jobs.
 function number_unemployed(LM::LaborMarket)
@@ -303,7 +318,7 @@ end;
 # in the labour market using this "market tightness" ratio.
 
 function market_tightness(state_of_world::LaborMarket)
-  length(state_of_world.parts.Vacancy)/number_unemployed(state_of_world)
+  nparts(state_of_world, :Vacancy)/number_unemployed(state_of_world)
 end;
 
 # This may come in handy for defining distributions
@@ -329,7 +344,7 @@ dependent_match_function = (
 full_abm = @pipe constant_job_dynamics_abm |>
   copy(_) |>
   filter(r -> r.name != :Hire, _) |> # Get rid of old hire rule
-  push!(_, ABMRule(:Hire, hire, dependent_match_function)) # add new one
+  push!(_, ABMRule(:Hire, hire, dependent_match_function)); # add new one
 
 # ## Running the Model
 # We can then construct an acset to reflect our starting state, and run a simulation for 
@@ -358,8 +373,19 @@ function plot_beveridge_curve(results::AlgebraicABMs.ABMs.Traj) # hide
   Plots.plot(                                                   # hide
     [number_unemployed(s)/nparts(s, :Person) for s in states],  # hide
     [market_tightness(s) for s in states],                      # hide
-    xlabel = "U rate", ylabel = "V/U"														# hide
+    xlabel = "U rate", ylabel = "V/U",													# hide
+    legend = false                                              # hide
   )																														  # hide	
 end 																														# hide
 
+# The standard way to visualize the output of a labor market flow model
+# is the "[Beveridge](https://en.wikipedia.org/wiki/William_Beveridge)
+# [Curve](https://en.wikipedia.org/wiki/Beveridge_curve)", a plot of market tightness (measured by the
+# ratio of vacancies to unemployment) against unemployment.
+
 plot_beveridge_curve(result) # hide
+
+# This simple model can be extended in a large number of different directions,
+# and calibrated against available data to provide quantitative forecasts.  Hopefully,
+# the availability of the AlgebraicABMs library will encourage more people to explore
+# these models and their implications!

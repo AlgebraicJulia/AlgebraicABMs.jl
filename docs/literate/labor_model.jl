@@ -1,4 +1,4 @@
-  # # Labor Market Search and Matching
+# # Labor Market Search and Matching
 # ## Set-up
 #
 # First, we load the necessary libraries from AlgebraicJulia and elsewhere.
@@ -13,9 +13,9 @@ ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # hide
 Random.seed!(123); # hide
 
 # ## Background
-# Inspired by the search-and-matching ABM implementation in [del Rio-Chanona et. al. (2022)](https://royalsocietypublishing.org/doi/suppl/10.1098/rsif.2020.0898), 
-# we demonstrate a very basic ABM of a [labor market seach-and-matching model](https://en.wikipedia.org/wiki/Search_and_matching_theory_(economics)).  
-# A "state of the world" in our model will be represented by an ACSet on a schema that we define, and the model itself
+# Inspired by the search-and-matching agent-based model (ABM) implementation in [del Rio-Chanona et. al. (2022)](https://royalsocietypublishing.org/doi/suppl/10.1098/rsif.2020.0898), 
+# we demonstrate a very basic ABM of a [labor market search-and-matching model](https://en.wikipedia.org/wiki/Search_and_matching_theory_(economics)).  
+# A "state of the world" in our model will be represented by special kind of labeled graph called an [ACSet](...): the vertices which represent entities in our model have types, and we must provide a schema that specifies what sorts of relationships must hold between the entities of various types (such as "every `Employee` must have a `Company` that they work at). The model itself
 # will consist of a set of [rewrite rules](https://blog.algebraicjulia.org/post/2022/09/ai-planning-cset/) for [ACSets](https://github.com/AlgebraicJulia/ACSets.jl) on that schema,
 # each paired with a probability distribution over the waiting time before that rewrite "fires" on each of the matches it "recognizes" in the current state of the world.
 # Running the model generates a trajectory of ACSets and times of state transitions.
@@ -389,3 +389,12 @@ plot_beveridge_curve(result) # hide
 # and calibrated against available data to provide quantitative forecasts.  Hopefully,
 # the availability of the AlgebraicABMs library will encourage more people to explore
 # these models and their implications!
+
+## Conclusions
+
+# - Economy of conceputal resources: an ACSet is a state of the world, but it's 
+#   also a pattern that can be used in rewrite rules which define transitions.
+# - Fewer lines of code compared to a naive python implemention
+# - Ability to visualize the abstractions (e.g. the patterns involved)
+# - Better match between the units of code and concepts
+# - Compositional: compose model out of parts that can be visualized independently

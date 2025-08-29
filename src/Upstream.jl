@@ -60,7 +60,9 @@ end
 function pops!(sampler::FirstToFire{K,T}, rng::AbstractRNG, tnow::T
               )::Tuple{T,Vector{K}} where {K,T}
   (new_time, which) = pop!(sampler, rng, tnow)
+  # Gives a singleton list of TYPE K -- with "which" as its sole element.
   whiches = K[which]
+  # Now accrete all events that occur at this time
   while true
     time, _ = next(sampler, tnow, rng)
     (time != new_time || isempty(sampler.firing_queue)) && break

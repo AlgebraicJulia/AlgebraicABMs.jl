@@ -151,6 +151,7 @@ Base.keys(p::RepresentableP) = keys(p.parts)
 multiplier(p::RepresentableP, X::ACSet) =
   prod(nparts(X, k)^length(v) for (k, v) in pairs(p.parts))
 
+# ASK: Meaning of this not_monic
 not_monic(b::Bool) = b === false 
 not_monic(obs::AbstractVector{Symbol}) = isempty(obs)
 
@@ -204,6 +205,9 @@ function pattern_type(r::Rule, is_exp::Bool)
   return RegularP() # no special case found
 end
 
+
+
+
 # Hazard rates depend on pattern type
 
 # get_hazard functions basically go through the job of turning various types of
@@ -228,11 +232,15 @@ function get_hazard(r::RepresentableP, f::ACSetTransformation, ::Float64,
                     h::ContinuousHazard) 
    err = "Representable patterns must have simple exponential rules"
    X = codom(f)
-   # It may be that the below "/" should be "*"
+   # TODO: It may be that the below "/" should be "*"??  Please check
    is_exp(h) ? Exponential(h.val.θ/multiplier(r,X)) : error(err)
 end
 
 const Maybe{T} = Union{Nothing, T}
+
+
+
+
 
 
 """
@@ -323,7 +331,7 @@ An agent-based model.
 # Key structure for an ABM -- rules, continuous dynamics, names (what are these?)
 # ASK: Are the names associated with the variables in the patterns in the rewrite rule?
 @struct_hash_equal struct ABM
-  rules::Vector{ABMRule}  
+  rules::Vector{ABMRule}
   dyn::Vector{ABMFlow}
   # A map from the name of a rule to its index in "rules".
   names::Dict{Symbol, Int}
@@ -333,7 +341,8 @@ An agent-based model.
   end
 end
 
-additions(abm::ABM) = right.(abm.rules)
+
+#additions(abm::ABM) = right.(abm.rules)
 
 # Migrate an ABM with an Data Migrations functor
 (F::Migrate)(abm::ABM) = ABM(F.(abm.rules), abm.dyn)
@@ -343,6 +352,7 @@ additions(abm::ABM) = right.(abm.rules)
 Base.getindex(abm::ABM, i::Int) = abm.rules[i]
 Base.getindex(abm::ABM, n::Symbol) = abm.rules[abm.names[n]]
 
+# Build another ABM with rules satifying the predicate f
 Base.filter(f, abm::ABM) = filter(f, abm.rules) |> ABM
 
 
@@ -361,9 +371,9 @@ function Base.push!(abm::ABM, r::ABMRule; overwrite=false)
 end
 
 
-#***Shallow Duplication of ABMs
+# Shallow Duplication of ABMs
 Base.copy(abm::ABM) = abm.rules |> copy |> ABM # shallow - rules have same pointers
-#***A notion of length of an ABM
+# A notion of length of an ABM
 Base.length(abm::ABM) = length(abm.rules)
 
 

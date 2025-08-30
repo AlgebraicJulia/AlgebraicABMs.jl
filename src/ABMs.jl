@@ -22,7 +22,8 @@ import ..Upstream: pattern, pops!, IncHomSet_basis
 # Timers
 ########
 # Key abstractions for timers commonly include closures that can use or remember 
-# 0, 1 or 2 of 1) morphism (ACSetTransformation) 2) time information to produce a hazard rate
+# 0, 1 or 2 of 1) morphism (ACSetTransformation) 2) time information to produce a 
+# distribution for a Distribution from a hazard rate
 
 """
 Something that can produce a ACSetTransformation × clocktime → hazard_rate
@@ -377,21 +378,6 @@ Base.copy(abm::ABM) = abm.rules |> copy |> ABM # shallow - rules have same point
 Base.length(abm::ABM) = length(abm.rules)
 
 
-"""A collection of timers associated at runtime w/ an ABMRule"""
-# KB: Probably we can delete AbsHomSet
-# For naive hom search, NO such hom-set (homset) is needed
-# For naive hom search, we do not need to accumulate "additions" -- these are the possible additions that we might see from the rules
-"""Initialize runtime hom-set given the rule and the initial state"""
-function init_homset(rule::ABMRule, state::ACSet, 
-                     additions::Vector{<:ACSetTransformation})
-  p, sd = pattern_type(rule), state_dep(rule.timer)
-  p == EmptyP() && return EmptyHomSet()
-  (sd || p == RegularP()  
-   ) && return RuntimeSingletonHomSet(IncHomSet_basis(getrule(rule), state,  additions; 
-                                        basis=basis_pattern(rule)))
-  @assert p isa RepresentableP  "$(typeof(p))"
-  return RepresentableHomSet()
-end 
 
 # Here, we are handling the first to fire
 # These are the 3 different ways one can refer to a hom (a particular match).  
@@ -415,11 +401,9 @@ mutable struct RuntimeABM
   #         how to get the next event for that rule.
   #   "clocks" IS still needed for naive hom search -- for each, we still need a way of sampling from this.
 
-  # Clocks is not needed for naive hom search
-  #const clocks::Vector{AbsHomSet}
   tnow::Float64
   nevent::Int
-  # ASK: Is this stochastic simulation algorithm really needed for naive hom search?
+
   const sampler::SSA # stochastic simulation algorithm
   const rng::Distributions.AbstractRNG
   const names::Dict{Symbol, Int}
@@ -431,33 +415,35 @@ mutable struct RuntimeABM
     # Create the runtime
     names = Dict(r => i for (i, r) in enumerate(nameof.(abm.rules))
                  if !isnothing(r))
-  # ASK: strip out call to init_homset?
-   # KB confirms that we don't have to care about additions for the Naive Hom Search
+
   # sampler() is creating a new sampler (an empty schedule)
   rt = new(init, 
              0., 0, sampler(), Random.RandomDevice(), names, 
              mk_prob(abm, init)...)
 
     # Initialize the firing queue
-    for (iRule, (pat,homset)) in enumerate(zip(pattern_type.(abm.rules), rt.clocks))
+    for (iRule, patType) in enumerate(pattern_type.(abm.rules))
       # ASK: should we get rid of this?
-      kv = if homset isa RuntimeSingletonHomSet 
-        # ASK: Does this give a collection of (domain, codomain) pairs?
-        # The first thing is key (the way of referring to the thing), and the value is the homomorphism.
-        # This would be a list of [h => h for h in homomorphisms(pat, state)]
-        pairs(homset) 
+
+      # The keys here are the way of referring to an event of this sort, and the 
+      # value is the homomorphism.
+      eventKeysMorphisms = if patType isa RegularP
+        [h => h for h in homomorphisms(patType, state)]
       else
-        # ASK: Ask about the interpretation of these two lines
-        if pat isa EmptyP || all(>(0), nparts.(Ref(init), keys(pat)))
+        if patType isa EmptyP || all(>(0), nparts.(Ref(init), keys(patType)))
+          # Here, we have a homomorphism that is either for an empty pattern or a
+          # representable pattern that has all of its matches present.
+          # The key is "nothing" because we don't need to refer to it 
           [nothing => create(init)]
         else 
           []
         end
       end
-      for (key, val) in kv
+
+      for (eventKey, morphism) in keysMorphisms
         # Get the hazard rate.  This takes care of upsampling.
         # haz is a JULIA DISTRIBUTION.
-        haz = get_hazard(pat, val, 0., abm.rules[iRule].timer)
+        hazDistr = get_hazard(patType, morphism, 0., abm.rules[iRule].timer)
         # ASK: Is this notion of a sampler still relevant for naive hom search?
         # This will do the sampling of this event! (i )
         # We will a key
@@ -478,15 +464,17 @@ mutable struct RuntimeABM
         # Thinik of sampler as a smart dictionary of map of key time-of-next-fire
         # The only thing that identifies what an event is "key".  We label "iRule" to 
         # prevent clashes between events for rules sharing the same key.
-        enable!(rt.sampler, iRule => key, haz, 0., 0., rt.rng)
+        enable!(rt.sampler, iRule => eventKey, hazDistr, 0., 0., rt.rng)
       end
     end
     return rt
   end
 end
 
-
 state(r::RuntimeABM) = r.state
+
+
+
 
 # ASK: What is the function of this haskey mechanism?  Is this specific to incremental hom search?  Is this to check if things are scheduled?  Is k something that matches a Keytype?
 # REMOVE any of the below?
@@ -495,8 +483,8 @@ Base.haskey(rt::RuntimeABM, k::Pair) = haskey(rt.sampler.transition_entry, k)
 Base.haskey(rt::RuntimeABM, k::Int) = 
   haskey(rt.sampler.transition_entry, k => nothing)
 
-Base.getindex(rt::RuntimeABM, i::Int) = rt.clocks[i]
-Base.getindex(rt::RuntimeABM, n::Symbol) = rt.clocks[rt.names[n]]
+#Base.getindex(rt::RuntimeABM, i::Int) = rt.clocks[i]
+#Base.getindex(rt::RuntimeABM, n::Symbol) = rt.clocks[rt.names[n]]
 
 """
 Construct an ODE for a given ACSet state. Return a mapping which allows to go from index to AttrType+index. 
@@ -507,16 +495,8 @@ function mk_prob(abm::ABM, state::ACSet)
   error("HERE")
 end
 
-"""
-Check that RuntimeABM incremental hom sets have all valid homs.
-"""
-# Disable?
-function validate(rt::RuntimeABM)
-  for c in filter(c -> c isa IncHomSet, rt.clocks)
-    c.state == rt.state || error("State mismatch")
-    validate(c)
-  end
-end
+
+
 
 # Naive Hom searches to look for patterns to see which apply AFTER a state update
 # Presumably we have to do that AFTER the actual state update
@@ -534,16 +514,24 @@ end
 # note the explicit homomorphism search!
 # ASK: Should we remove the timer here?  
 # L and G refer to the corresponding quantities in DPO rewriting.
-function get_match(pat::PatternType, L::ACSet, G::ACSet, timer::AbsHomSet, key; 
-                   basis::Maybe{ACSetTransformation}) 
-  isnothing(basis) && return get_match(pat, L, G, timer, key)
-  # Handle an explicit basis
-  m = get_match(pat, dom(basis), G, timer, key)
-  initial = extend_morphism_constraints(m, basis)
-  rand(homomorphisms(L, G; initial))
+
+# Handle an the explicit basis, by delegating to the other get_match morphisms
+function get_match(pat::PatternType, L::ACSet, G::ACSet, m::Maybe{ACSetTransformation}; 
+                   basis::Maybe{ACSetTransformation})::ACSetTransformation
+  if isnothing(basis)
+      return get_match(pat, L, G, m)
+  else
+    # Handle an explicit basis
+    m = get_match(pat, dom(basis), G, m)
+    initial = extend_morphism_constraints(m, basis)
+    
+    # ASK: Why is this a random choice?
+    rand(homomorphisms(L, G; initial))
+  end
 end
 
 
+# TODO
 """
 Get match returns a randomly chosen morphism for the aggregate rule
 """
@@ -551,10 +539,11 @@ Get match returns a randomly chosen morphism for the aggregate rule
 #    allowing each part to be drawn randomly from the appropriate Set for the 
 #    "Head honcho" of the representable in the ACSet (per the Yoneda Lemma)?
 # The below are seemingly handling get_match under different types of hom sets (nothing, representable, etc.)
-get_match(::EmptyP, L::ACSet, G::ACSet, ::EmptyHomSet, ::Nothing) = create(G)
+get_match(::EmptyP, L::ACSet, G::ACSet, ::Nothing)::ACSetTransformation = create(G)
 
-function get_match(P::RepresentableP, L::T, G::ACSet, ::RepresentableHomSet, 
-                   ::Nothing) where T<:ACSet
+function get_match(P::RepresentableP, L::T, G::ACSet, 
+                   ::Nothing)::ACSetTransformation where T<:ACSet
+  # ASK: What is the logic behind this choice of initial?
   initial = Dict(map(collect(pairs(P.parts))) do (o, idxs) 
     o => Dict(idx => rand(parts(G, o)) for idx in idxs)
   end)
@@ -562,15 +551,14 @@ function get_match(P::RepresentableP, L::T, G::ACSet, ::RepresentableHomSet,
   return homomorphism(L, G; initial)
 end
 
-# disable, given reference to RuntimeSingletonHomSet?
-# ASK: This seems to require an RuntimeSingletonHomSet (including its IncHomSet) for a RegularP
-get_match(::RegularP, ::ACSet, ::ACSet, hs::RuntimeSingletonHomSet, key::KeyType) = hs[key]
+# Handle a regular pattern
+get_match(::RegularP, L::ACSet, G::ACSet, ACSetTransformation m)::ACSetTransformation = m
 
 
 """
 A trajectory of an ABM: each event time and result of `save`.
 """
-# ASK: This is the basic structure that records the trajectory of the ABM
+# The structure that records the trajectory of the ABM
 @struct_hash_equal struct Traj
   init::ACSet                                       # Presumably the initial state
   events::Vector{Tuple{Float64, Int, String, Any}}  # History of events -- String gives the rule name.  what are the Int and Any for?
@@ -622,16 +610,6 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
   log!(rule::Int, sp::Span) = 
     push!(output, (rt.tnow, rule, getname(rule), save(rt.state), sp))
  
-  # ASK: what are we disabling with "disable!"?
-  disable!′(key::Pair) = disable!(rt.sampler, key, rt.tnow)
-  disable!′(i::Int) = disable!′(i => nothing)
-  # ASK: How to handle the Keytype here?  
-  function enable!′(m::ACSetTransformation, rule_id::Int, key::Maybe{KeyType}=nothing) 
-    rule = abm.rules[rule_id]
-    haz = get_hazard(pattern_type(rule), m, rt.tnow, rule.timer)
-    enable!(rt.sampler, rule_id => key, haz, rt.tnow, rt.tnow, rt.rng)
-  end
-
   # Main loop
   while rt.nevent < maxevent && rt.tnow < maxtime
     # TODO: isempty(abm.dyn) should be check that all flows sum to 0 
@@ -655,10 +633,10 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
       # ASK: What is the significance of the length of the sampler?
       N = length(rt.sampler)
 
+
       # ASK: What is the significance of the length of the events?  The set of events that could go off at this time?
       # Determine if "Event" needs an s at its end due to the plural case
       s = length(events) > 1 ? "s" : ""
-
       # ASK: Are we prefering the first of the events in general, or just here as a convenience for printing?
       rname(e) = let r = first(e); n = abm.rules[r].name; isnothing(n) ? r : n end
       @debug ("Step $(length(output)): Event$s $(join(string.(rname.(events)), ", "))"
@@ -667,16 +645,16 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
       # TODO some sort of check that the events are consistent with each other
       # or a randomization of their order
 
-      # ASK: KB confirmed that we can likely remove this, given the lack of need to support incremental hom sets?
       update_data = [] # use to update incremental hom sets afterwards
       # execute all the events
-      for (event, key) in events
+      for (event, keySchedule) in events
         # rule' is the AlgebraicRewriting rule for "rule" !
-        rule::ABMRule, clocks::AbsHomSet = abm.rules[event], rt.clocks[event]
-        rule′::Rule, rule_type::Symbol = getrule(rule), ruletype(rule)
+        rule::ABMRule = abm.rules[event]
+        rule′::Rule = getrule(rule)
+        rule_type::Symbol = ruletype(rule)
         
         # If RegularPattern, we have an explicit match, otherwise randomly pick one
-        m = get_match(pattern_type(rule), pattern(rule), rt.state, clocks, key; 
+        m = get_match(pattern_type(rule), pattern(rule), rt.state, keySchedule; 
                       basis=basis(rule))
 
         # bring the match 'up to speed' given the previous (simultaneous) updates
@@ -718,62 +696,21 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
 
       isempty(update_data) && continue 
 
-      # All other rules can potentially update in response to the current event
-      # ASK: Is this the time to go through all of the other rules to see if they still match?
-      # "i" is the rule identifier
-      for (i, (ruleᵢ, clocksᵢ)) in enumerate(zip(abm.rules, rt.clocks))
-        pt = pattern_type(ruleᵢ)
-        if pt == EmptyP() && i ∈ first.(events)
-          enable!′(create(rt.state), i)
+      # TODO: This is some key work remaining
+      # Ok, now go through and do the naive hom searches
+      # for each ABMRule R
+      #   Accumulate CURRENT_STATE_MATCHES of all the match morphisms mState for rule R found in the current state rt.state
+      #   Loop through all events e that involve rule R in the sampler
+      #       Check if event's ACSetHomormophisms or Representables or Empty e.mSchedule is in the IN CURRENT_STATE_MATCHES
+      #         if e.mSchedule is not in CURRENT_STATE_MATCHES, delete! e from sampler (these are events that were created earlier due to matches to this rule, but no longer match anything in the state)
+      #         if e.mSchedule is in the current state as name mState, we leave it there, and mark mState as having been found in CURRENT_STATE_MATCHES (these are events in the event queue that are still present in the state, and therefore still of interest)
+      #   We go through all of CURRENT_STATE_MATCHES that are not marked as found in the scheduler, and add them to the schedule (these are the new matches for this rule)
+      #if not, remove any events for this rule
 
-        # ASK: disable this, given that this is for an explicit hom-set, which involves an IncrementalHomSet? If so, how to support most events/
-        elseif pt == RegularP() # update explicit hom-set w/r/t span Xₙ ↩ • -> Xₙ₊₁
-          # ASK: Do we just do the search explicitly here, to see if these things still apply?
-          # ASK: How to adapt this code to naive hom search?
 
-          for ((lft, rght), rmap, dpo, rule_right) in update_data
-            del_invalid, del_new = deletion!(clocksᵢ, lft; dpo)
-
-            for d in del_invalid # disable clocks which are invalidated
-              (i=>d) ∈ events || disable!′(i => d) # (event,key) already disabled
-            end
-
-            for a in del_new
-              enable!′(clocksᵢ[a], i, a) 
-            end
-            # Delete the follow
-            add_invalid, add_new = addition!(clocksᵢ, rule_right, rmap, rght)
-
-            for d in add_invalid # disable clocks which are invalidated
-              (i=>d) ∈ (events) || disable!′(i => d) # (event,key) already disabled
-            end
-            for a in add_new
-              enable!′(clocksᵢ[a], i, a) 
-            end
-          end
-        elseif pt isa RepresentableP
-          relevant_obs = keys(pt)
-          # here, we only care about the things that happened at the first and the last
-          # Xs get LEFT side of the first thing (G) and the RIGHT of the last (H')
-          Xs = ( left(first(first(update_data))), right(first(last(update_data))) )
-          # we need to update current timer if # of parts has changed
-          # ASK: This logic might be suggesting incremental hom search reasoning -- how to modify for naive hom search?
-          # ASK: How does this whole idea of disabling and enabling timers (which may be based on an the knowledge from incremental hom search as to what is enabled/disabled?) 
-          #         carry over to for naive hom search?
-          if i ∈ first.(events) && all(>(0), nparts.(Ref(rt.state), relevant_obs))
-            enable!′(create(rt.state), i)
-          elseif !all(ob -> allequal(nparts.(codom.(Xs), ob)), relevant_obs)
-            currently_enabled = haskey(rt, i)
-            currently_enabled && disable!′(i) # Disable if active
-            # enable new timer if possible to apply rule
-            if all(>(0), nparts.(Ref(rt.state), relevant_obs))
-              enable!′(create(rt.state), i) 
-            end
-          end
-        end
-      end
       # If any of the matches that were fired are still preserved, re-enable
       # ASK: This logic might be suggesting incremental hom search reasoning -- how to modify for naive hom search?
+      # TODO: adapt this to the naive hom search context
       for (event, key) in events
         if haskey(rt.clocks[event], key)
           enable!′(rt.clocks[event][key], event, key)

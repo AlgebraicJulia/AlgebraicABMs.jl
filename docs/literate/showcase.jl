@@ -9,7 +9,7 @@ ENV["JULIA_DEBUG"] = "AlgebraicABMs"; # turn off @debug messages for this packag
 
 # ## Basis 
 
-# Rewrote rules have associated timers which are scheduled to fire in the future.
+# Rewrite rules have associated timers which are scheduled to fire in the future.
 # For normal rules, at any point in time, there is exactly one such timer per 
 # match morphism from the pattern $L$ of the rule into the present state of the 
 # world, $X$. This is often what we want, though in some circumstances, we want the 

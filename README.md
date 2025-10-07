@@ -9,12 +9,33 @@ Important example files: `docs/literate/game_of_life.jl` and `test/ABMs.jl`
 
 ## 🛠️ Usage
 
-To locally build the documentation and the literate code examples, run the following in the command line:
+To install the dependencies and register this package so that it can be imported, run the following command line:
+
 ```
-julia --project=docs -e "using AlgebraicABMs, LiveServer; servedocs(literate_dir=\"docs/literate\",skip_dir=\"docs/src/generated\")"
+julia -e 'using Pkg; Pkg.develop(path=".")'
 ```
 
-To locally run the test suite, run the following command
+but it might be better to use `--project` at this time rather than registering the project globally.
+
+To locally build the documentation and the literate code examples, first register this package and install the dependencies:
+
+```
+julia --project=docs -e 'using Pkg; Pkg.develop(path=".");'
+```
+
+then run the following in the command line:
+```
+julia --project=docs -e 'using AlgebraicABMs, LiveServer; servedocs(literate_dir="docs/literate",skip_dir="docs/src/generated")'
+```
+generating the document templates will take some time.
+
+To locally run the test suite, first install the test framework and register this package:
+
+```
+julia --project=test -e 'using Pkg; Pkg.develop(path="."); Pkg.add("Aqua")'
+```
+
+and then run the following command:
 ```
 julia --project=test test/runtests.jl
 ```

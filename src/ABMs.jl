@@ -534,8 +534,15 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
                       basis=basis(rule))
         # bring the match 'up to speed' given the previous (simultanous) updates
         for (l, r) in first.(update_data)
-          m = pull_back(l, m) ⋅ r
+          pb = pull_back(l, m)
+          if isnothing(pb)
+            @debug "Skipping event $(name(rule)): match invalidated by prior simultaneous event"
+            m = nothing
+            break
+          end
+          m = pb ⋅ r
         end
+        isnothing(m) && continue
         dpo = rule_type == :DPO ? (left(rule′), m) : nothing
         # check if dangling condition is satisfied
         isnothing(dpo) || can_pushout_complement(ComposablePair(dpo...)) || continue

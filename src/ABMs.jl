@@ -486,7 +486,6 @@ end
 
 function run!(abm::ABM, rt::RuntimeABM, output::Traj;
               save=_->nothing, maxevent=MAXEVENT, maxtime=Inf, dt=0.1)
-  maxevent = isinf(maxtime) ? maxevent : typemax(Int)
   # Helper functions that automatically incorporate the runtime `rt`
   getname(rule::Int)::String = 
     string(isnothing(abm.rules[rule].name) ? rule : abm.rules[rule].name)

@@ -80,6 +80,11 @@ traj = run!(ABM([rem_edge]), G);
 traj = run!(ABM([add_loop]), G);
 @test length(traj) > 3 # after we add a loop, the match persists + is resampled
 
+let traj = run!(ABM([create_loop]), Graph(); maxevent=2, maxtime=10.0)
+  @test length(traj) == 2
+  @test traj.events[end][1] == 2.0
+end
+
 
 
 # Test events in parallel

@@ -416,7 +416,7 @@ match_coords(birth, G)
 # This is easy! Pass in our model and our initial state. We optionally could 
 # limit the run via some maximum number of steps or time, but this one will 
 # achieve steady state within 3 time steps.
-res = run!(GoL_coords, G);
+res = run!(GoL_coords, G; maxevent=100);
 @test length(res) == 13
 
 # ## View results

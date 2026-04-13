@@ -73,16 +73,26 @@ push!(new_abm, do_nothing)
 
 traj = run!(abm, G; maxevent=10);
 
-traj = run!(ABM([rem_edge]), G);
+traj = run!(ABM([rem_edge]), G; maxevent=10);
 @test length(traj) == 3
 
 
-traj = run!(ABM([add_loop]), G);
+traj = run!(ABM([add_loop]), G; maxevent=10);
 @test length(traj) > 3 # after we add a loop, the match persists + is resampled
 
 let traj = run!(ABM([create_loop]), Graph(); maxevent=2, maxtime=10.0)
   @test length(traj) == 2
   @test traj.events[end][1] == 2.0
+end
+
+let err = try
+    run!(ABM([create_loop]), Graph())
+    nothing
+  catch e
+    e
+  end
+  @test err isa ErrorException
+  @test occursin("specify maxevent and/or maxtime", sprint(showerror, err))
 end
 
 

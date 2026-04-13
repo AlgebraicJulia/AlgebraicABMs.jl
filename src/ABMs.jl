@@ -470,7 +470,7 @@ Base.isempty(t::Traj) = isempty(t.events)
 
 Base.length(t::Traj) = length(t.events)
 
-const MAXEVENT = 100
+const MAXEVENT = typemax(Int)
 
 """
 Run an ABM, creating a fresh runtime + trajectory.
@@ -480,12 +480,18 @@ dt - timestep for checking discrete events when running ODE dynamics.
 """
 function run!(abm::ABM, init::T; save=_->nothing, maxevent=MAXEVENT, 
               maxtime=Inf, kw...) where T<:ACSet 
+  maxevent == typemax(Int) && isinf(maxtime) && error(
+    "run! requires at least one finite bound; specify maxevent and/or maxtime."
+  )
   run!(abm::ABM, RuntimeABM(abm, init; kw...), Traj(init); 
        save, maxtime, maxevent)
 end
 
 function run!(abm::ABM, rt::RuntimeABM, output::Traj;
               save=_->nothing, maxevent=MAXEVENT, maxtime=Inf, dt=0.1)
+  maxevent == typemax(Int) && isinf(maxtime) && error(
+    "run! requires at least one finite bound; specify maxevent and/or maxtime."
+  )
   # Helper functions that automatically incorporate the runtime `rt`
   getname(rule::Int)::String = 
     string(isnothing(abm.rules[rule].name) ? rule : abm.rules[rule].name)

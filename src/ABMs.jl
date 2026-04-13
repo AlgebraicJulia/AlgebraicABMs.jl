@@ -554,6 +554,10 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
       # if no event at this time was actionable, due to dangling condition
       isempty(update_data) && continue 
 
+      # Track which (rule, key) pairs are enabled during the update phase,
+      # so we can avoid duplicate re-enabling of fired matches at the end.
+      updated_keys = Set{Pair{Int, Maybe{KeyType}}}()
+
       # All other rules can potentially update in response to the current event
       for (i, (ruleᵢ, clocksᵢ)) in enumerate(zip(abm.rules, rt.clocks))
         pt = pattern_type(ruleᵢ)
@@ -569,6 +573,7 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
 
             for a in del_new
               enable!′(clocksᵢ[a], i, a) 
+              push!(updated_keys, i => a)
             end
             add_invalid, add_new = addition!(clocksᵢ, rule_right, rmap, rght)
 
@@ -576,7 +581,18 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
               (i=>d) ∈ (events) || disable!′(i => d) # (event,key) already diabled
             end
             for a in add_new
-              enable!′(clocksᵢ[a], i, a) 
+              # Check if this newly-discovered match duplicates one already
+              # enabled (can occur when expression binding creates a new state
+              # object that is isomorphic to the old one).
+              new_match = clocksᵢ[a]
+              is_dup = any(updated_keys) do rk
+                first(rk) == i && haskey(clocksᵢ, last(rk)) &&
+                  clocksᵢ[last(rk)] == new_match
+              end
+              if !is_dup
+                enable!′(clocksᵢ[a], i, a)
+              end
+              push!(updated_keys, i => a)
             end
           end
         elseif pt isa RepresentableP
@@ -595,10 +611,19 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
           end
         end
       end
-      # If any of the matches that were fired are still preserved, re-enable
+      # If any of the matches that were fired are still preserved, re-enable,
+      # but only if an equivalent match was not already enabled above.
       for (event, key) in events
         if haskey(rt.clocks[event], key)
-          enable!′(rt.clocks[event][key], event, key)
+          match = rt.clocks[event][key]
+          already_enabled = any(updated_keys) do rk
+            first(rk) == event && haskey(rt.sampler.transition_entry, rk) &&
+              haskey(rt.clocks[event], last(rk)) &&
+              rt.clocks[event][last(rk)] == match
+          end
+          if !already_enabled
+            enable!′(match, event, key)
+          end
         end
       end
     end

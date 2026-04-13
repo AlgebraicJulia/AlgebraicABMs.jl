@@ -9,6 +9,14 @@ using Catlab, AlgebraicRewriting
 using AlgebraicABMs.ABMs: RegularP, EmptyP, RepresentableP, RuntimeABM
 using AlgebraicRewriting.Incremental.IncrementalCC: match_vect
 
+@present SchCounter(FreeSchema) begin
+  X::Ob
+  N::AttrType
+  count::Attr(X, N)
+end
+@acset_type CounterSet(SchCounter){Int}
+const CounterCat = ACSetCategory(MADVarACSetCat(CounterSet()))
+
 # L = ∅, I = ∅, R = •↺
 create_loop = ABMRule(
   :CreateLoop,
@@ -79,6 +87,19 @@ traj = run!(ABM([rem_edge]), G);
 
 traj = run!(ABM([add_loop]), G);
 @test length(traj) > 3 # after we add a loop, the match persists + is resampled
+
+counter = @acset CounterSet begin X=1; N=1; count=[AttrVar(1)] end
+increment = ABMRule(
+  :Increment,
+  Rule(id(counter), id(counter); expr=(N=[vs -> only(vs) + 1],), cat=CounterCat),
+  DiscreteHazard(1.)
+)
+let init = @acset CounterSet begin X=1; count=[0] end
+  traj = run!(ABM([increment]), init; maxtime=3.0)
+  @test length(traj) == 3
+  @test first.(traj.events) == [1.0, 2.0, 3.0]
+  @test codom(right(traj.hist[end]))[:count] == [3]
+end
 
 
 

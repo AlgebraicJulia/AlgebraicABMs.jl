@@ -534,7 +534,11 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
                       basis=basis(rule))
         # bring the match 'up to speed' given the previous (simultanous) updates
         for (l, r) in first.(update_data)
-          m = pull_back(l, m) ⋅ r
+          pb = pull_back(l, m)
+          if isnothing(pb)
+            error("Conflicting simultaneous events: rule $(getname(event)) was invalidated by a prior simultaneous rewrite at t=$(round(rt.tnow, digits=2)).")
+          end
+          m = pb ⋅ r
         end
         dpo = rule_type == :DPO ? (left(rule′), m) : nothing
         # check if dangling condition is satisfied

@@ -88,6 +88,19 @@ create_vert = ABMRule(Rule(id(Graph()),  create(Graph(1))), DiscreteHazard(1.));
 abm = ABM([create_loop, create_vert]);
 traj = run!(abm, Graph(); maxtime=5);
 
+let rem_loop_a = ABMRule(:RemLoopA, Rule(delete(Graph(1)), id(Graph(1))), DiscreteHazard(1.)),
+    rem_loop_b = ABMRule(:RemLoopB, Rule(delete(Graph(1)), id(Graph(1))), DiscreteHazard(1.)),
+    loop_graph = @acset Graph begin V=1; E=1; src=[1]; tgt=[1] end
+  err = try
+    run!(ABM([rem_loop_a, rem_loop_b]), loop_graph; maxtime=1.0)
+    nothing
+  catch e
+    e
+  end
+  @test err isa ErrorException
+  @test occursin("Conflicting simultaneous events", sprint(showerror, err))
+end
+
 
 # Basis
 #######

@@ -536,13 +536,10 @@ function run!(abm::ABM, rt::RuntimeABM, output::Traj;
         for (l, r) in first.(update_data)
           pb = pull_back(l, m)
           if isnothing(pb)
-            @debug "Skipping event $(name(rule)): match invalidated by prior simultaneous event"
-            m = nothing
-            break
+            error("Conflicting simultaneous events: rule $(getname(event)) was invalidated by a prior simultaneous rewrite at t=$(round(rt.tnow, digits=2)).")
           end
           m = pb ⋅ r
         end
-        isnothing(m) && continue
         dpo = rule_type == :DPO ? (left(rule′), m) : nothing
         # check if dangling condition is satisfied
         isnothing(dpo) || can_pushout_complement(ComposablePair(dpo...)) || continue
